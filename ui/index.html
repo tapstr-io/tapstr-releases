@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.0.7 -->
+<!-- tapstr-ui-version: 1.0.6 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5482,7 +5482,7 @@ async function executeTapKeg() {
         const response = await fetch(`/api/devices/${_actionModalDeviceId}/command`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'tap_keg', volume: vol, unit: unit })
+            body: JSON.stringify({ action: 'tap_keg', params: { volume: vol, unit: unit } })
         });
         const result = await response.json();
         if (result.status === 'accepted') {
@@ -5522,7 +5522,7 @@ async function executeVolumeAdjust() {
         const response = await fetch(`/api/devices/${_actionModalDeviceId}/command`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'adjust_volume', remaining: vol, unit: unit })
+            body: JSON.stringify({ action: 'adjust_volume', params: { remaining: vol, unit: unit } })
         });
         const result = await response.json();
         if (result.status === 'accepted') {
