@@ -5498,6 +5498,7 @@ async function executeTapKeg() {
 // --- VOLUME ADJUST MODAL ---
 function openVolumeModal(deviceId, deviceName, remaining, unit, total) {
     _actionModalDeviceId = deviceId;
+    window._volumeModalUnit = unit;  // store for submit
     document.getElementById('volumeModalDeviceName').textContent = deviceName;
     document.getElementById('volumeModalCurrent').textContent = `${remaining} ${unit} of ${total}`;
     document.getElementById('volumeModalUnit').textContent = unit;
@@ -5514,13 +5515,14 @@ function adjustVolumeRemaining(delta) {
     input.value = val;
 }
 async function executeVolumeAdjust() {
-    const vol = parseInt(document.getElementById('volumeRemainingInput').value, 10);
+    const vol = parseFloat(document.getElementById('volumeRemainingInput').value);
+    const unit = window._volumeModalUnit || 'pints';
     closeVolumeModal();
     try {
         const response = await fetch(`/api/devices/${_actionModalDeviceId}/command`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'adjust_volume', remaining: vol })
+            body: JSON.stringify({ action: 'adjust_volume', remaining: vol, unit: unit })
         });
         const result = await response.json();
         if (result.status === 'accepted') {
