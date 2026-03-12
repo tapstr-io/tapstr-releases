@@ -1,10 +1,10 @@
-<!-- tapstr-ui-version: 1.0.2 -->
+<!-- tapstr-ui-version: 1.0.1 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tapstr Dashboard 2</title>
+    <title>tapstr Dashboard</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.json">
@@ -7415,29 +7415,55 @@ function executeDeviceCommand(action) {
 
 async function triggerUIUpdate() {
     try {
-        // First check if an update is available
+        // Kick off the check (runs in a background task on the device)
         const checkRes = await fetch('/api/ota/ui-check', { method: 'POST' });
-        const checkData = await checkRes.json();
-        
-        if (!checkData.uiUpdateAvailable) {
-            alert(`Dashboard is already up to date (v${checkData.currentVersion})`);
+        if (!checkRes.ok) throw new Error(`Check failed: ${checkRes.status}`);
+
+        // Poll for result - the task typically completes in 2-4 seconds
+        let checkData = null;
+        for (let i = 0; i < 10; i++) {
+            await new Promise(r => setTimeout(r, 1500));
+            try {
+                const statusRes = await fetch('/api/ota/status');
+                const statusData = await statusRes.json();
+                // Once uiCurrentVersion is populated the check has completed
+                if (statusData.uiCurrentVersion) {
+                    checkData = statusData;
+                    break;
+                }
+            } catch(e) { /* keep polling */ }
+        }
+
+        // Fallback: just attempt update if we couldn't get status
+        if (!checkData) {
+            const go = confirm('Could not confirm UI version status. Attempt update anyway?');
+            if (!go) return;
+            const updateRes = await fetch('/api/ota/ui-update', { method: 'POST' });
+            const updateData = await updateRes.json();
+            if (updateData.success) {
+                alert('Dashboard update started! Refresh this page in about 30 seconds.');
+            }
             return;
         }
-        
+
+        if (!checkData.uiUpdateAvailable) {
+            alert(`Dashboard is already up to date (v${checkData.uiCurrentVersion})`);
+            return;
+        }
+
         const confirmed = confirm(
             `Dashboard UI update available!\n\n` +
-            `Current: v${checkData.currentVersion}\n` +
-            `Available: v${checkData.availableVersion}\n\n` +
-            `The update will download in the background. No reboot required.`
+            `Current:   v${checkData.uiCurrentVersion}\n` +
+            `Available: v${checkData.uiAvailableVersion}\n\n` +
+            `The update downloads in the background. No reboot required.\n` +
+            `Refresh the page after ~30 seconds to load the new version.`
         );
-        
         if (!confirmed) return;
-        
+
         const updateRes = await fetch('/api/ota/ui-update', { method: 'POST' });
         const updateData = await updateRes.json();
-        
         if (updateData.success) {
-            alert('Dashboard update started! Refresh this page in about 30 seconds to load the new version.');
+            alert('Dashboard update started! Refresh in ~30 seconds.');
         } else {
             alert('Failed to start UI update. Check device serial monitor.');
         }
