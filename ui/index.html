@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.0.8 -->
+<!-- tapstr-ui-version: 1.0.6 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5496,9 +5496,14 @@ async function executeTapKeg() {
 }
 
 // --- VOLUME ADJUST MODAL ---
-function openVolumeModal(deviceId, deviceName, remaining, unit, total) {
+function openVolumeModal(deviceId, deviceName) {
     _actionModalDeviceId = deviceId;
-    window._volumeModalUnit = unit;  // store for submit
+    const metrics = currentDeviceMetrics[deviceId];
+    const remaining = metrics?.volume?.remaining ?? 0;
+    const unit      = metrics?.volume?.unit      ?? 'pints';
+    const total     = metrics?.volume?.total     ?? 0;
+
+    window._volumeModalUnit = unit;
     document.getElementById('volumeModalDeviceName').textContent = deviceName;
     document.getElementById('volumeModalCurrent').textContent = `${remaining} ${unit} of ${total}`;
     document.getElementById('volumeModalUnit').textContent = unit;
@@ -5702,7 +5707,7 @@ function createDeviceCard(device, deviceMetrics) {
 
             <div class="stats-grid">
                 <!-- Volume Card -->
-                <div class="stat-card volume-card" style="cursor:pointer" onclick="openVolumeModal(${device.id}, '${device.name.replace(/'/g, "\\'")}', ${metrics.volume.remaining}, '${metrics.volume.unit}', ${metrics.volume.total})">
+                <div class="stat-card volume-card" style="cursor:pointer" onclick="openVolumeModal(${device.id}, '${device.name.replace(/'/g, "\\'")}')">
                     <div class="keg-visual">
                         <div class="liquid-fill ${volumeClass}" style="height: ${metrics.volume.percent}%">
                             <div class="liquid-surface"></div>
