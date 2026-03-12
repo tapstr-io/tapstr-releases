@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.0.5 -->
+<!-- tapstr-ui-version: 1.0.6 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2420,9 +2420,173 @@ main {
     }
 }
 
+/* Clickable card hover state (volume, pressure, tapped, cleaned) */
+.stat-card.volume-card:hover,
+.stat-card.pressure-card:hover,
+.stat-card.tapped-card:hover,
+.stat-card.cleaned-card:hover {
+    border-color: rgba(230, 193, 49, 0.35);
+    box-shadow: 0 0 0 1px rgba(230, 193, 49, 0.2), 0 8px 24px rgba(0,0,0,0.3);
+    transform: translateY(-1px);
+}
+
 /* =============================================================================
-   HEALTH MODAL STYLES
+   ACTION MODAL STYLES (Clean, Tap Keg, Volume Adjust, Pressure Calibrate)
    ============================================================================= */
+
+/* Shared action modal sizing */
+#cleanModal .modal-content,
+#tapKegModal .modal-content,
+#volumeModal .modal-content,
+#pressureCalibModal .modal-content {
+    max-width: 420px;
+}
+
+/* Action modal body */
+.action-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(12px, 2vh, 20px);
+}
+
+/* Icon header */
+.action-modal-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+}
+.action-modal-icon.clean  { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.action-modal-icon.tap    { background: rgba(230, 193, 49, 0.15); color: #E6C131; }
+.action-modal-icon.volume { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.action-modal-icon.calib  { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+.action-modal-icon svg    { width: 28px; height: 28px; stroke: currentColor; }
+
+/* Description text */
+.action-modal-desc {
+    font-size: clamp(12px, 1.8vh, 14px);
+    color: #94a3b8;
+    line-height: 1.5;
+}
+.action-modal-desc strong {
+    color: #e2e8f0;
+    font-weight: 600;
+}
+
+/* Warning notice */
+.action-modal-warning {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: clamp(11px, 1.6vh, 13px);
+    color: #fca5a5;
+    line-height: 1.5;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+.action-modal-warning svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    stroke: #ef4444;
+}
+
+/* Number input row with +/- buttons */
+.num-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+}
+
+.num-input-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    background: rgba(71, 85, 105, 0.2);
+    color: #e2e8f0;
+    font-size: 22px;
+    font-weight: 300;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    line-height: 1;
+    padding: 0;
+}
+.num-input-btn:hover {
+    background: rgba(71, 85, 105, 0.4);
+    border-color: rgba(230, 193, 49, 0.4);
+    color: #E6C131;
+}
+.num-input-btn:active {
+    transform: scale(0.94);
+}
+
+.num-input-field {
+    flex: 1;
+    max-width: 160px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    border-radius: 12px;
+    padding: 10px 14px;
+    color: #f1f5f9;
+    font-size: clamp(18px, 3vh, 24px);
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+    -moz-appearance: textfield;
+}
+.num-input-field::-webkit-outer-spin-button,
+.num-input-field::-webkit-inner-spin-button { -webkit-appearance: none; }
+.num-input-field:focus {
+    border-color: rgba(230, 193, 49, 0.6);
+    background: rgba(15, 23, 42, 0.8);
+}
+
+.num-input-unit {
+    font-size: clamp(12px, 1.8vh, 14px);
+    color: #94a3b8;
+    min-width: 36px;
+    text-align: left;
+}
+
+/* Keg volume preset chips */
+.keg-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+}
+.keg-preset-chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    background: rgba(71, 85, 105, 0.15);
+    color: #94a3b8;
+    font-size: clamp(10px, 1.5vh, 12px);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.keg-preset-chip:hover,
+.keg-preset-chip.active {
+    background: rgba(230, 193, 49, 0.15);
+    border-color: rgba(230, 193, 49, 0.5);
+    color: #E6C131;
+}
 
 #healthModal .modal-content {
     max-width: 600px;
@@ -4183,6 +4347,228 @@ main {
     </div>
 </div>
 
+<!-- =====================================================================
+     CLEAN LINES MODAL
+     ===================================================================== -->
+<div id="cleanModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Clean Lines</h2>
+            <button class="close-btn" onclick="closeCleanModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="action-modal-body">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <div class="action-modal-icon clean">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-size:clamp(15px,2.2vh,18px);font-weight:700;color:#f1f5f9;margin-bottom:4px;" id="cleanModalDeviceName">Device</div>
+                    <div class="action-modal-desc">Mark beer lines as cleaned for this tap.</div>
+                </div>
+            </div>
+            <div class="action-modal-desc" style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:12px 14px;">
+                This updates the last cleaned timestamp and resets the cleaning countdown on the device display.
+            </div>
+            <div style="display:flex;gap:10px;margin-top:4px;">
+                <button class="confirm-btn cancel" style="flex:1" onclick="closeCleanModal()">Cancel</button>
+                <button class="confirm-btn confirm" style="flex:1;background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%);" onclick="executeCleanLines()">
+                    Clean Now
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================================
+     TAP KEG MODAL
+     ===================================================================== -->
+<div id="tapKegModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Tap New Keg</h2>
+            <button class="close-btn" onclick="closeTapKegModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="action-modal-body">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <div class="action-modal-icon tap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                        <path d="M17 8h1a4 4 0 1 1 0 8h-1"/>
+                        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z"/>
+                        <line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-size:clamp(15px,2.2vh,18px);font-weight:700;color:#f1f5f9;margin-bottom:4px;" id="tapKegModalDeviceName">Device</div>
+                    <div class="action-modal-desc">Select the volume of the new keg.</div>
+                </div>
+            </div>
+
+            <!-- Volume input -->
+            <div>
+                <div style="font-size:clamp(11px,1.6vh,13px);color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;font-weight:600;">Keg Volume</div>
+                <div class="num-input-row">
+                    <button class="num-input-btn" onclick="adjustTapKegVolume(-1)">−</button>
+                    <input class="num-input-field" type="number" id="tapKegVolumeInput" value="50" min="1" max="500" step="1">
+                    <span class="num-input-unit" id="tapKegVolumeUnit">L</span>
+                    <button class="num-input-btn" onclick="adjustTapKegVolume(1)">+</button>
+                </div>
+            </div>
+
+            <!-- Preset chips -->
+            <div>
+                <div style="font-size:clamp(11px,1.6vh,13px);color:#64748b;margin-bottom:8px;">Common sizes</div>
+                <div class="keg-presets" id="tapKegPresets"></div>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:4px;">
+                <button class="confirm-btn cancel" style="flex:1" onclick="closeTapKegModal()">Cancel</button>
+                <button class="confirm-btn confirm" style="flex:1;" onclick="confirmTapKeg()">Tap Keg</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tap Keg confirmation sub-modal -->
+<div id="tapKegConfirmModal" class="modal" style="z-index:6500;">
+    <div class="modal-content" style="max-width:380px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Confirm Tap</h2>
+            <button class="close-btn" onclick="closeTapKegConfirm()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="confirm-modal-body">
+            <div class="confirm-icon" style="background:rgba(230,193,49,0.15);color:#E6C131;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px;height:32px;">
+                    <path d="M17 8h1a4 4 0 1 1 0 8h-1"/>
+                    <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z"/>
+                    <line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/>
+                </svg>
+            </div>
+            <p class="confirm-message" id="tapKegConfirmMsg">Tap new keg?</p>
+            <div class="confirm-buttons">
+                <button class="confirm-btn cancel" onclick="closeTapKegConfirm()">No</button>
+                <button class="confirm-btn confirm" onclick="executeTapKeg()">Yes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================================
+     VOLUME ADJUST MODAL
+     ===================================================================== -->
+<div id="volumeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Adjust Volume</h2>
+            <button class="close-btn" onclick="closeVolumeModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="action-modal-body">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <div class="action-modal-icon volume">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" fill="currentColor" stroke="none" opacity="0.3"/>
+                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-size:clamp(15px,2.2vh,18px);font-weight:700;color:#f1f5f9;margin-bottom:4px;" id="volumeModalDeviceName">Device</div>
+                    <div class="action-modal-desc">Manual wastage adjustment.</div>
+                </div>
+            </div>
+
+            <div class="action-modal-desc" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:12px 14px;">
+                Adjust the remaining volume to account for wastage or spillage. Current: <strong id="volumeModalCurrent">--</strong>
+            </div>
+
+            <div>
+                <div style="font-size:clamp(11px,1.6vh,13px);color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;font-weight:600;">Volume Remaining</div>
+                <div class="num-input-row">
+                    <button class="num-input-btn" onclick="adjustVolumeRemaining(-1)">−</button>
+                    <input class="num-input-field" type="number" id="volumeRemainingInput" value="0" min="0" step="1">
+                    <span class="num-input-unit" id="volumeModalUnit">pts</span>
+                    <button class="num-input-btn" onclick="adjustVolumeRemaining(1)">+</button>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:4px;">
+                <button class="confirm-btn cancel" style="flex:1" onclick="closeVolumeModal()">Cancel</button>
+                <button class="confirm-btn confirm" style="flex:1;background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);" onclick="executeVolumeAdjust()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================================
+     PRESSURE CALIBRATION MODAL
+     ===================================================================== -->
+<div id="pressureCalibModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Pressure Calibration</h2>
+            <button class="close-btn" onclick="closePressureCalibModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="action-modal-body">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <div class="action-modal-icon calib">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-size:clamp(15px,2.2vh,18px);font-weight:700;color:#f1f5f9;margin-bottom:4px;" id="pressureCalibModalDeviceName">Device</div>
+                    <div class="action-modal-desc">Set current ambient pressure as <strong>0.00</strong>.</div>
+                </div>
+            </div>
+
+            <div class="action-modal-warning">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>Turn off the regulator and <strong style="color:#fca5a5;">disconnect the sensor from the gas line</strong> before proceeding.</span>
+            </div>
+
+            <div id="pressureCalibResult" style="display:none;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:14px;text-align:center;">
+                <div style="display:flex;align-items:center;justify-content:center;gap:8px;color:#22c55e;font-weight:700;font-size:clamp(14px,2vh,16px);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px;height:20px;">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    Pressure sensor calibrated
+                </div>
+            </div>
+
+            <div id="pressureCalibActions" style="display:flex;gap:10px;margin-top:4px;">
+                <button class="confirm-btn cancel" style="flex:1" onclick="closePressureCalibModal()">Cancel</button>
+                <button class="confirm-btn confirm" style="flex:1;background:linear-gradient(135deg,#a855f7 0%,#7c3aed 100%);" onclick="executePresssureCalib()">Calibrate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <script>
 async function pollUploadStatus(deviceIndex = 0, deviceId = null) {
     const maxAttempts = 30;  // 15 seconds max (500ms intervals)
@@ -4991,6 +5377,197 @@ function openHealthModal(deviceId, deviceName) {
 
 function closeHealthModal() { document.getElementById('healthModal').classList.remove('active'); }
 
+// =============================================================================
+// ACTION MODALS: CLEAN LINES, TAP KEG, VOLUME ADJUST, PRESSURE CALIBRATION
+// =============================================================================
+
+let _actionModalDeviceId = null;
+
+// --- CLEAN LINES MODAL ---
+function openCleanModal(deviceId, deviceName) {
+    _actionModalDeviceId = deviceId;
+    document.getElementById('cleanModalDeviceName').textContent = deviceName;
+    document.getElementById('cleanModal').classList.add('active');
+}
+function closeCleanModal() {
+    document.getElementById('cleanModal').classList.remove('active');
+}
+async function executeCleanLines() {
+    closeCleanModal();
+    try {
+        const response = await fetch(`/api/devices/${_actionModalDeviceId}/command`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'clean_lines' })
+        });
+        const result = await response.json();
+        if (result.status === 'accepted') {
+            showToast('Lines marked as cleaned', 'success');
+        } else {
+            showToast('Command failed: ' + (result.message || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        showToast('Failed to send command', 'error');
+    }
+}
+
+// --- TAP KEG MODAL ---
+// Keg size presets: [label, litres, gallons]
+const KEG_PRESETS_LITRES   = [[' 9L (Corny)',9],[' 19L (½bbl)',19],[' 30L (¼bbl)',30],[' 50L (Full)',50],[' 58L (Slim)',58]];
+const KEG_PRESETS_GALLONS  = [['2.5gal',2.5],['5gal',5],['7.75gal',7.75],['13.2gal',13.2],['15.5gal',15.5]];
+
+let _tapKegUseGallons = false;
+
+function openTapKegModal(deviceId, deviceName) {
+    _actionModalDeviceId = deviceId;
+    document.getElementById('tapKegModalDeviceName').textContent = deviceName;
+
+    // Determine unit from global prefs
+    _tapKegUseGallons = window._globalPrefsKegGallons || false;
+    const unit = _tapKegUseGallons ? 'gal' : 'L';
+    document.getElementById('tapKegVolumeUnit').textContent = unit;
+
+    // Default to common 50L / 13.2gal
+    const defaultVal = _tapKegUseGallons ? 13.2 : 50;
+    document.getElementById('tapKegVolumeInput').value = defaultVal;
+
+    // Render presets
+    const presets = _tapKegUseGallons ? KEG_PRESETS_GALLONS : KEG_PRESETS_LITRES;
+    const container = document.getElementById('tapKegPresets');
+    container.innerHTML = presets.map(([label, val]) =>
+        `<button class="keg-preset-chip${parseFloat(document.getElementById('tapKegVolumeInput').value) === val ? ' active' : ''}"
+            onclick="setTapKegPreset(${val})">${label}</button>`
+    ).join('');
+
+    document.getElementById('tapKegModal').classList.add('active');
+}
+function closeTapKegModal() {
+    document.getElementById('tapKegModal').classList.remove('active');
+}
+function adjustTapKegVolume(delta) {
+    const input = document.getElementById('tapKegVolumeInput');
+    const step = _tapKegUseGallons ? 0.5 : 1;
+    let val = parseFloat(input.value) + delta * step;
+    val = Math.max(_tapKegUseGallons ? 0.5 : 1, Math.round(val / step) * step);
+    input.value = _tapKegUseGallons ? val.toFixed(1) : val;
+    _updateTapKegPresetHighlight();
+}
+function setTapKegPreset(val) {
+    document.getElementById('tapKegVolumeInput').value = _tapKegUseGallons ? val.toFixed(1) : val;
+    _updateTapKegPresetHighlight();
+}
+function _updateTapKegPresetHighlight() {
+    const cur = parseFloat(document.getElementById('tapKegVolumeInput').value);
+    document.querySelectorAll('#tapKegPresets .keg-preset-chip').forEach(chip => {
+        const presets = _tapKegUseGallons ? KEG_PRESETS_GALLONS : KEG_PRESETS_LITRES;
+        const match = presets.find(([,v]) => Math.abs(v - cur) < 0.01);
+        chip.classList.toggle('active', match && Math.abs(match[1] - cur) < 0.01 && chip.textContent.trim() === match[0].trim());
+    });
+}
+function confirmTapKeg() {
+    const vol = parseFloat(document.getElementById('tapKegVolumeInput').value);
+    const unit = _tapKegUseGallons ? 'gal' : 'L';
+    document.getElementById('tapKegConfirmMsg').textContent = `Tap new ${vol}${unit} keg?`;
+    document.getElementById('tapKegConfirmModal').classList.add('active');
+}
+function closeTapKegConfirm() {
+    document.getElementById('tapKegConfirmModal').classList.remove('active');
+}
+async function executeTapKeg() {
+    const vol = parseFloat(document.getElementById('tapKegVolumeInput').value);
+    const unit = _tapKegUseGallons ? 'gal' : 'L';
+    closeTapKegConfirm();
+    closeTapKegModal();
+    try {
+        const response = await fetch(`/api/devices/${_actionModalDeviceId}/command`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'tap_keg', volume: vol, unit: unit })
+        });
+        const result = await response.json();
+        if (result.status === 'accepted') {
+            showToast(`New ${vol}${unit} keg tapped`, 'success');
+        } else {
+            showToast('Command failed: ' + (result.message || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        showToast('Failed to send command', 'error');
+    }
+}
+
+// --- VOLUME ADJUST MODAL ---
+function openVolumeModal(deviceId, deviceName, remaining, unit, total) {
+    _actionModalDeviceId = deviceId;
+    document.getElementById('volumeModalDeviceName').textContent = deviceName;
+    document.getElementById('volumeModalCurrent').textContent = `${remaining} ${unit} of ${total}`;
+    document.getElementById('volumeModalUnit').textContent = unit;
+    document.getElementById('volumeRemainingInput').value = remaining;
+    document.getElementById('volumeModal').classList.add('active');
+}
+function closeVolumeModal() {
+    document.getElementById('volumeModal').classList.remove('active');
+}
+function adjustVolumeRemaining(delta) {
+    const input = document.getElementById('volumeRemainingInput');
+    let val = parseInt(input.value, 10) + delta;
+    val = Math.max(0, val);
+    input.value = val;
+}
+async function executeVolumeAdjust() {
+    const vol = parseInt(document.getElementById('volumeRemainingInput').value, 10);
+    closeVolumeModal();
+    try {
+        const response = await fetch(`/api/devices/${_actionModalDeviceId}/command`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'adjust_volume', remaining: vol })
+        });
+        const result = await response.json();
+        if (result.status === 'accepted') {
+            showToast('Volume updated', 'success');
+        } else {
+            showToast('Command failed: ' + (result.message || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        showToast('Failed to send command', 'error');
+    }
+}
+
+// --- PRESSURE CALIBRATION MODAL ---
+function openPressureCalibModal(deviceId, deviceName) {
+    _actionModalDeviceId = deviceId;
+    document.getElementById('pressureCalibModalDeviceName').textContent = deviceName;
+    // Reset result state
+    document.getElementById('pressureCalibResult').style.display = 'none';
+    document.getElementById('pressureCalibActions').style.display = 'flex';
+    document.getElementById('pressureCalibModal').classList.add('active');
+}
+function closePressureCalibModal() {
+    document.getElementById('pressureCalibModal').classList.remove('active');
+}
+async function executePresssureCalib() {
+    document.getElementById('pressureCalibActions').style.display = 'none';
+    try {
+        const response = await fetch(`/api/devices/${_actionModalDeviceId}/command`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'calibrate_pressure' })
+        });
+        const result = await response.json();
+        if (result.status === 'accepted') {
+            document.getElementById('pressureCalibResult').style.display = 'block';
+            setTimeout(() => closePressureCalibModal(), 2500);
+        } else {
+            showToast('Calibration failed: ' + (result.message || 'Unknown error'), 'error');
+            closePressureCalibModal();
+        }
+    } catch (err) {
+        showToast('Failed to send command', 'error');
+        closePressureCalibModal();
+    }
+}
+
+
 
 
 
@@ -5123,7 +5700,7 @@ function createDeviceCard(device, deviceMetrics) {
 
             <div class="stats-grid">
                 <!-- Volume Card -->
-                <div class="stat-card volume-card">
+                <div class="stat-card volume-card" style="cursor:pointer" onclick="openVolumeModal(${device.id}, '${device.name.replace(/'/g, "\\'")}', ${metrics.volume.remaining}, '${metrics.volume.unit}', ${metrics.volume.total})">
                     <div class="keg-visual">
                         <div class="liquid-fill ${volumeClass}" style="height: ${metrics.volume.percent}%">
                             <div class="liquid-surface"></div>
@@ -5148,7 +5725,7 @@ function createDeviceCard(device, deviceMetrics) {
                 </div>
 
                 <!-- Pressure Card -->
-                <div class="stat-card pressure-card">
+                <div class="stat-card pressure-card" style="cursor:pointer" onclick="openPressureCalibModal(${device.id}, '${device.name.replace(/'/g, "\\'")}')">
                     <div class="stat-label">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/>
@@ -5206,7 +5783,7 @@ function createDeviceCard(device, deviceMetrics) {
                 `}
 
                 <!-- Tapped Card -->
-                <div class="stat-card tapped-card">
+                <div class="stat-card tapped-card" style="cursor:pointer" onclick="openTapKegModal(${device.id}, '${device.name.replace(/'/g, "\\'")}')">
                     <div class="stat-label">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -5224,7 +5801,7 @@ function createDeviceCard(device, deviceMetrics) {
                 </div>
 
                 <!-- Cleaned Card -->
-                <div class="stat-card cleaned-card">
+                <div class="stat-card cleaned-card" style="cursor:pointer" onclick="openCleanModal(${device.id}, '${device.name.replace(/'/g, "\\'")}')">
                     <div class="stat-label">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -5553,6 +6130,9 @@ function populateSettingsModal(prefs) {
     if (!prefs) return;
     
     console.log('Populating settings with:', prefs);
+    
+    // Cache keg unit globally for action modals
+    window._globalPrefsKegGallons = !!prefs.kegSizeUnit;
     
     // Serving measure toggle (serveMeasure: 0=pints, 1=glasses)
     const servingToggle = document.querySelector('[data-setting="serveMeasure"]');
