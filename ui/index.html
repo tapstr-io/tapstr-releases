@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.3 -->
+<!-- tapstr-ui-version: 1.22.4 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1772,7 +1772,7 @@ body.page-overlay-active .app-mobile .scroll-container {
 
 
 /* =============================================================================
-   PHASE 3: DESKTOP & TABLET CSS — ported from wireframe v7 desktop.
+   DESKTOP & TABLET CSS — ported from wireframe v7 desktop.
    Scoped under .app-desktop. Tablet @media routes the tablet tree at 768-1239px
    into .app-desktop with condensed sizing.
    ============================================================================= */
@@ -3067,7 +3067,7 @@ body.page-overlay-active .app-mobile .scroll-container {
 }
 
 /* =============================================================================
-   END PHASE 3 DESKTOP CSS
+   END DESKTOP CSS
    ============================================================================= */
 
 /* =============================================================================
@@ -4453,7 +4453,7 @@ main {
 
     </div>
     <!-- =====================================================================
-         PHASE 3: DESKTOP TREE — ported from wireframe v7 desktop.
+         DESKTOP TREE — ported from wireframe v7 desktop.
          Scoped under .app-desktop. Topbar, pill-nav, and four screen sections.
          Data wiring via dt* functions in script section (see end of <script>).
          ===================================================================== -->
@@ -4893,7 +4893,7 @@ main {
   </main>
     </div>
     <!-- =====================================================================
-         PHASE 4: SHARED MODAL (bottom sheet)
+         SHARED MODAL (bottom sheet)
          Wireframe's generic modal, ported with .sheet rename to avoid colliding
          with legacy .modal. Used by openModal(kind, tapId, extra) for
          badgePicker, actionScope, thermostat (and future kinds).
@@ -7153,7 +7153,7 @@ function initGalleryCropper(file, hint) {
 }
 
 // =============================================================================
-// PHASE 3: MULTI-DEVICE DASHBOARD - COMPLETE IMPLEMENTATION
+// MULTI-DEVICE DASHBOARD - COMPLETE IMPLEMENTATION
 // =============================================================================
 
 // Global state
@@ -7195,7 +7195,7 @@ const LINE_RESISTANCE = {
 const LINE_DIAMETERS = ['3/16"', '1/4"', '5/16"', '3/8"'];
 
 // =============================================================================
-// HELPER FUNCTIONS (Preserved from Phase 2)
+// HELPER FUNCTIONS
 // =============================================================================
 
 
@@ -8348,7 +8348,7 @@ async function executePresssureCalib() {
 
 
 // =============================================================================
-// PHASE 3a: DEVICE DISCOVERY & API INTEGRATION
+// DEVICE DISCOVERY & API INTEGRATION
 // =============================================================================
 
 async function fetchDevicesList() {
@@ -8391,7 +8391,12 @@ async function fetchDeviceMetrics(deviceId) {
             // undefined (older firmware / no cache yet) = don't nag
             setupDone: devicePrefs.setupDone
         };
-        
+        // A save from this browser wins for a few seconds: the master's copy of
+        // a slave's prefs can lag the save slightly, and a refresh that read it
+        // just before would otherwise flip the field back.
+        const justSaved = _devicePrefsJustSaved[deviceId];
+        if (justSaved && Date.now() < justSaved.until) Object.assign(mergedInfo, justSaved.prefs);
+
         return {
             id: deviceId,
             info: mergedInfo,
@@ -8431,7 +8436,7 @@ async function fetchAllDevicesMetrics() {
 }
 
 // =============================================================================
-// PHASE 3b: DEVICE DATA PIPELINE (legacy card renderer removed in 1.15.0)
+// DEVICE DATA PIPELINE (legacy card renderer removed in 1.15.0)
 // =============================================================================
 
 async function renderAllDevices() {
@@ -8523,7 +8528,7 @@ async function renderAllDevices() {
 
 
 // =============================================================================
-// PHASE 3c: REAL-TIME POLLING WITH REFRESH
+// REAL-TIME POLLING WITH REFRESH
 // =============================================================================
 
 function startPolling() {
@@ -8587,6 +8592,8 @@ function updateDeviceCard(device, metrics) {
         }
       }
     } catch (e) { /* desktop tree may not be present yet */ }
+    // Settings fields follow the refreshed values (e.g. a change made from another phone)
+    _redrawDevicePrefs(device.id);
 }
 
 // =============================================================================
@@ -8676,7 +8683,7 @@ function showErrorScreen(message) {
 }
 
 // =============================================================================
-// SETTINGS & PREFERENCES (Preserved from Phase 2)
+// SETTINGS & PREFERENCES
 // =============================================================================
 
 // Temp / pressure unit prefs, for when there's no live reading to take the
@@ -8720,7 +8727,7 @@ function closeSettings() {
 }
 
 // =============================================================================
-// PHASE 6: TEMPERATURE MODAL - FULL IMPLEMENTATION
+// TEMPERATURE MODAL - FULL IMPLEMENTATION
 // =============================================================================
 
 async function openTempPanel() {
@@ -8741,15 +8748,15 @@ function closeTempPanel() {
 }
 
 // =============================================================================
-// GALLERY (Preserved from your original)
+// GALLERY
 // =============================================================================
 
-// Gallery state variables (from gallery.html)
+// Gallery state variables
 let galleryCurrentDevice = 0; // 0 = master, 1+ = slave index
 let galleryDevices = [];
 
 // =============================================================================
-// GALLERY FUNCTIONS (Merged from gallery.html)
+// GALLERY FUNCTIONS
 // =============================================================================
 
 async function checkForSlaveDevicesGallery() {
@@ -9339,13 +9346,15 @@ function _editDevicePrefField(deviceId, prefs, key) {
         prefs[key] = value;
         _saveDevicePrefs(deviceId, prefs).then(function(){
             showToast('Settings saved', 'success');
-            // Refresh mobile settings rows if visible
-            if (typeof mobPopulateDevicePrefs === 'function') {
-                if (!currentDeviceMetrics[deviceId]) currentDeviceMetrics[deviceId] = {};
-                if (!currentDeviceMetrics[deviceId].info) currentDeviceMetrics[deviceId].info = {};
-                Object.assign(currentDeviceMetrics[deviceId].info, prefs);
-                mobPopulateDevicePrefs(deviceId);
-            }
+            const saved = {
+                deviceName: prefs.deviceName, beerStyle: prefs.beerStyle,
+                tapHeight: prefs.tapHeight, lineLength: prefs.lineLength, lineID: prefs.lineID
+            };
+            _devicePrefsJustSaved[deviceId] = { prefs: saved, until: Date.now() + 8000 };
+            if (!currentDeviceMetrics[deviceId]) currentDeviceMetrics[deviceId] = {};
+            if (!currentDeviceMetrics[deviceId].info) currentDeviceMetrics[deviceId].info = {};
+            Object.assign(currentDeviceMetrics[deviceId].info, saved);
+            _redrawDevicePrefs(deviceId);
         }).catch(function(){});
     };
     const name = prefs.deviceName || 'Device';
@@ -9368,6 +9377,22 @@ function _editDevicePrefField(deviceId, prefs, key) {
             value: prefs.lineLength || 0, unit: 'mm', min: 0, max: 10000,
             onConfirm: save, onCancel: null });
     }
+}
+
+// deviceId -> { prefs, until }: last save from this browser, see fetchDeviceMetrics()
+const _devicePrefsJustSaved = {};
+
+// Redraw whichever settings view is showing this device (mobile rows or the
+// desktop Settings screen). Called after a save and on every refresh.
+function _redrawDevicePrefs(deviceId) {
+    try {
+        if (typeof mobPopulateDevicePrefs === 'function' && mobActiveDeviceId === deviceId) {
+            mobPopulateDevicePrefs(deviceId);
+        }
+        if (!mobShellActive && dtActiveScreen === 'settings' && dtActiveDevice === deviceId) {
+            dtRenderDeviceSettings();
+        }
+    } catch (e) { /* settings views not built yet */ }
 }
 
 async function _saveDevicePrefs(deviceId, prefs) {
@@ -9417,7 +9442,7 @@ async function openDeviceSettings(deviceId, deviceName, focusKey) {
 }
 
 // =============================================================================
-// PHASE 5: DEVICE COMMAND EXECUTION WITH MODAL CONFIRMATIONS
+// DEVICE COMMAND EXECUTION WITH MODAL CONFIRMATIONS
 // =============================================================================
 
 // Command configurations for single device commands
@@ -9968,11 +9993,11 @@ function showToast(message, type = 'info', duration = 3000) {
 
 
 // =============================================================================
-// PHASE 3e: DASHBOARD INITIALIZATION
+// DASHBOARD INITIALIZATION
 // =============================================================================
 
 // =============================================================================
-// PHASE 2: MOBILE SHELL — populates .app-mobile from existing data layer
+// MOBILE SHELL — populates .app-mobile from existing data layer
 // All functions prefixed `mob` are mobile-specific; legacy code untouched.
 // =============================================================================
 
@@ -10793,11 +10818,11 @@ function mobOpenBadgePicker(deviceId) {
 })();
 
 // =============================================================================
-// END PHASE 2 MOBILE SHELL
+// END MOBILE SHELL
 // =============================================================================
 
 // =============================================================================
-// PHASE 3: DESKTOP SHELL — populates .app-desktop from real device data.
+// DESKTOP SHELL — populates .app-desktop from real device data.
 // All functions prefixed `dt` to scope. Refactored from wireframe dtInit IIFE
 // to read currentDevices/currentDeviceMetrics instead of static demo data.
 // =============================================================================
@@ -12045,11 +12070,11 @@ function renderDesktopShell() {
 }
 
 // =============================================================================
-// END PHASE 3 DESKTOP SHELL
+// END DESKTOP SHELL
 // =============================================================================
 
 // =============================================================================
-// PHASE 4: SHARED MODAL SYSTEM
+// SHARED MODAL SYSTEM
 // Ported from wireframe (wireframe .modal -> production .sheet to avoid colliding
 // with legacy .modal). Single bottom-sheet modal that hosts multiple content
 // kinds; each kind has its own renderer. Wired to real backend APIs.
@@ -12237,7 +12262,7 @@ function sheetInput(opts) {
   if (mode === 'field') {
     control =
       (o.fieldCap ? '<div class="sh-field-cap">' + _sheetEsc(o.fieldCap) + '</div>' : '') +
-      '<div class="sh-field"><input id="shInputField"' + (o.text ? '' : ' inputmode="decimal"') + ' value="' + _sheetEsc(o.value != null ? o.value : '') + '">' +
+      '<div class="sh-field"><input id="shInputField"' + (o.text ? ' autocapitalize="words"' : ' inputmode="decimal" autocapitalize="off"') + ' autocomplete="off" autocorrect="off" spellcheck="false" value="' + _sheetEsc(o.value != null ? o.value : '') + '">' +
         (unit ? '<span class="unit">' + _sheetEsc(unit) + '</span>' : '') +
       '</div>' +
       ((o.presets && o.presets.length) ?
@@ -12368,7 +12393,7 @@ async function _renderBadgePicker(deviceId, title, sub, body) {
         '<div><div class="bp-crop-step">New badge</div><div class="bp-crop-title">What&rsquo;s on tap?</div></div>' +
       '</div>' +
       '<form class="bp-find-bar" id="bpFindForm">' +
-        '<input type="search" class="bp-meta-input" id="bpFindName" maxlength="32" placeholder="Beer name, e.g. Guinness" autocomplete="off" enterkeyhint="search" aria-label="Beer name">' +
+        '<input type="search" class="bp-meta-input" id="bpFindName" maxlength="32" placeholder="Beer name, e.g. Guinness" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="search" aria-label="Beer name">' +
         '<button type="submit" class="bp-find-go" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.2" y2="16.2"/></svg></button>' +
       '</form>' +
       '<div class="bp-find-status" id="bpFindStatus"></div>' +
@@ -12416,7 +12441,7 @@ async function _renderBadgePicker(deviceId, title, sub, body) {
         '<div class="bp-meta-preview"><img id="bpMetaPreview" alt="Badge preview"></div>' +
         '<div class="bp-meta-field">' +
           '<label class="bp-meta-label" for="bpMetaName">Beer name</label>' +
-          '<input type="text" class="bp-meta-input" id="bpMetaName" maxlength="32" placeholder="e.g. Guinness" autocomplete="off" oninput="bpMetaValidate()">' +
+          '<input type="text" class="bp-meta-input" id="bpMetaName" maxlength="32" placeholder="e.g. Guinness" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" oninput="bpMetaValidate()">' +
         '</div>' +
         '<div class="bp-meta-field">' +
           '<label class="bp-meta-label" for="bpMetaStyle">Beer style</label>' +
@@ -13224,7 +13249,7 @@ function _badgeCacheUpdate(deviceId, isMaster, filename, meta) {
 }
 
 // =============================================================================
-// END PHASE 4 MODAL SYSTEM
+// END MODAL SYSTEM
 // =============================================================================
 
 // =============================================================================
@@ -13517,7 +13542,7 @@ function _suRenderStep() {
     const presets = (gal ? KEG_PRESETS_GALLONS : KEG_PRESETS_LITRES).map(function(p){ return { label: p[0].trim(), value: p[1] }; });
     const val = a.kegSize != null ? a.kegSize : (gal ? 5 : 19);
     const wrap = _suFrame({ title: 'What size is the keg?', sub: isNew ? null : 'The full size, not what’s left. We’ll ask about that next.',
-      body: '<div class="su-field"><div class="su-input"><input id="suKegSize" inputmode="decimal" autocomplete="off" value="' + val + '"><span class="u">' + unit + '</span></div>'
+      body: '<div class="su-field"><div class="su-input"><input id="suKegSize" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="' + val + '"><span class="u">' + unit + '</span></div>'
           + '<div class="su-chips">' + presets.map(function(p){ return '<button type="button" class="su-chip' + (p.value === val ? ' active' : '') + '" data-v="' + p.value + '">' + _sheetEsc(p.label) + '</button>'; }).join('') + '</div></div>',
       foot: '<button type="button" class="su-btn primary" id="suNext">Next</button>' });
     const field = wrap.querySelector('#suKegSize');
@@ -13576,10 +13601,10 @@ function _suRenderStep() {
     const wrap = _suFrame({ title: 'Measure the line', sub: 'Used to check the line is balanced for your gas pressure, which is the most common cause of foamy pours.',
       body: '<div class="su-line-grid">' + _SU_LINE_DIAGRAM + '<div>'
         + '<div class="su-field"><div class="su-field-cap">Tap height above the keg</div>'
-        +   '<div class="su-input"><input id="suTapH" inputmode="decimal" autocomplete="off" placeholder="e.g. ' + (imp ? '24' : '60') + '" value="' + fmt(prior.tapHeight, hF) + '"><span class="u">' + hU + '</span></div>'
+        +   '<div class="su-input"><input id="suTapH" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="e.g. ' + (imp ? '24' : '60') + '" value="' + fmt(prior.tapHeight, hF) + '"><span class="u">' + hU + '</span></div>'
         +   '<div class="su-field-hint">From the top of the keg up to the faucet.</div></div>'
         + '<div class="su-field"><div class="su-field-cap">Beer line length</div>'
-        +   '<div class="su-input"><input id="suLineL" inputmode="decimal" autocomplete="off" placeholder="e.g. ' + (imp ? '5' : '1.5') + '" value="' + fmt(prior.lineLength, lF) + '"><span class="u">' + lU + '</span></div>'
+        +   '<div class="su-input"><input id="suLineL" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="e.g. ' + (imp ? '5' : '1.5') + '" value="' + fmt(prior.lineLength, lF) + '"><span class="u">' + lU + '</span></div>'
         +   '<div class="su-field-hint">The full run of beer line from keg coupler to faucet.</div></div>'
         + '<div class="su-field"><div class="su-field-cap">Line inner diameter</div>'
         +   '<div class="su-chips" id="suLineID">' + LINE_DIAMETERS.map(function(d){ return '<button type="button" class="su-chip' + (d === curID ? ' active' : '') + '" data-v="' + _sheetEsc(d) + '">' + _sheetEsc(d) + '</button>'; }).join('') + '</div>'
