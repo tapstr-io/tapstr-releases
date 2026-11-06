@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.4 -->
+<!-- tapstr-ui-version: 1.22.5 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1660,6 +1660,27 @@ body.page-overlay-active .app-mobile .scroll-container {
   cursor: pointer;
 }
 .app-mobile .rename-btn:hover { background: var(--accent); color: var(--accent-fg); }
+
+/* Tapstr app only (updateAppSwitchBtn): back to the app's list of Tapstrs */
+.app-mobile .app-switch-btn {
+  width: 100%;
+  height: 44px;
+  flex-shrink: 0;
+  margin: 0 0 10px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 150ms ease, background 150ms ease;
+}
+.app-mobile .app-switch-btn:active { transform: scale(0.98); background: var(--accent-deep); }
 
 .app-mobile .settings-list { display: flex; flex-direction: column; }
 .app-mobile .settings-row {
@@ -4322,6 +4343,12 @@ main {
           <span style="width:36px;"></span>
         </header>
         <div class="overlay-content">
+
+          <!-- Tapstr app only, with 2+ Tapstrs saved: back to the app's list. updateAppSwitchBtn() -->
+          <button class="app-switch-btn" id="appSwitchBtn" style="display:none" onclick="appSwitchTapstr()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg>
+            Switch Tapstr
+          </button>
 
           <section class="settings-section">
             <div class="settings-section-h"><span>Tap</span></div>
@@ -8709,9 +8736,27 @@ async function loadPreferences() {
     }
 }
 
+// Tapstr phone app: the app injects a TapstrApp message channel and
+// window.tapstrAppInfo = {tapstrCount: N}. "Switch Tapstr" shows only there,
+// and only with more than one Tapstr saved in the app. Browsers never see it.
+function updateAppSwitchBtn() {
+    const btn = document.getElementById('appSwitchBtn');
+    if (!btn) return;
+    const inApp = !!(window.TapstrApp && typeof window.TapstrApp.postMessage === 'function');
+    const count = (window.tapstrAppInfo && window.tapstrAppInfo.tapstrCount) || 0;
+    btn.style.display = (inApp && count > 1) ? 'flex' : 'none';
+}
+
+function appSwitchTapstr() {
+    if (window.TapstrApp && typeof window.TapstrApp.postMessage === 'function') {
+        window.TapstrApp.postMessage('devices');
+    }
+}
+
 async function openSettings() {
     // Mobile: slide-from-right overlay page. Desktop: Settings screen.
     if (typeof mobShellActive !== 'undefined' && mobShellActive) {
+        updateAppSwitchBtn();
         return openSettingsOverlay();
     }
     if (typeof dtSetScreen === 'function') {
