@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.5 -->
+<!-- tapstr-ui-version: 1.22.6 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1248,6 +1248,9 @@ button.sh-navrow { width: 100%; background: none; border-left: none; border-righ
   transition: transform 380ms cubic-bezier(.2,.8,.2,1);
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--ink);
+  /* Fixed at inset 0, so it sits under the status bar wherever the page runs
+     edge to edge (the Tapstr app, home-screen web app). Safari: 0. */
+  padding-top: var(--safe-top);
 }
 .app-mobile .overlay-page::-webkit-scrollbar { display: none; }
 .app-mobile .overlay-page.active { transform: translateX(0); }
@@ -8746,6 +8749,30 @@ function updateAppSwitchBtn() {
     const count = (window.tapstrAppInfo && window.tapstrAppInfo.tapstrCount) || 0;
     btn.style.display = (inApp && count > 1) ? 'flex' : 'none';
 }
+
+// Tapstr phone app: when this master (device 0) accepts a network or factory
+// reset, tell the app to forget it, so it expects a fresh setup next time.
+// Every reset path in this page ends in POST /api/devices/0/command, so one
+// hook covers them all. Does nothing outside the app.
+(function () {
+    if (typeof window.fetch !== 'function') return;
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async function (input, init) {
+        const res = await realFetch(input, init);
+        try {
+            const app = window.TapstrApp;
+            const url = typeof input === 'string' ? input : (input && input.url) || '';
+            if (app && typeof app.postMessage === 'function' && res.ok &&
+                /\/api\/devices\/0\/command$/.test(url) && init && typeof init.body === 'string') {
+                const action = JSON.parse(init.body).action;
+                if (action === 'reset_network' || action === 'factory_reset') {
+                    setTimeout(function () { app.postMessage('forget'); }, 1500);
+                }
+            }
+        } catch (_) { /* never break the request */ }
+        return res;
+    };
+})();
 
 function appSwitchTapstr() {
     if (window.TapstrApp && typeof window.TapstrApp.postMessage === 'function') {
