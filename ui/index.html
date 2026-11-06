@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.7 -->
+<!-- tapstr-ui-version: 1.22.8 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1663,6 +1663,46 @@ body.page-overlay-active .app-mobile .scroll-container {
   cursor: pointer;
 }
 .app-mobile .rename-btn:hover { background: var(--accent); color: var(--accent-fg); }
+
+/* "New tap found" card (newTapCard): floats under the top bar in both shells
+   when the main Tapstr's periodic scan sees an unadopted tap. */
+.newtap-card {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--safe-top, 0px) + 68px);
+  transform: translate(-50%, -12px);
+  width: min(420px, calc(100% - 24px));
+  z-index: 900;
+  background: var(--surface-2);
+  border: 1px solid var(--accent-line);
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+  padding: 14px 16px 16px;
+  color: var(--ink);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.newtap-card.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.newtap-card .nt-head { display: flex; align-items: center; gap: 10px; }
+.newtap-card .nt-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0;
+  box-shadow: 0 0 0 4px var(--accent-soft); }
+.newtap-card .nt-title { font-size: 16px; font-weight: 650; flex: 1; }
+.newtap-card .nt-close { background: none; border: none; color: var(--ink-3); font-size: 22px; line-height: 1;
+  padding: 2px 4px; cursor: pointer; }
+.newtap-card .nt-sub { font-size: 14px; color: var(--ink-2); margin: 6px 0 12px; line-height: 1.4; }
+.newtap-card .nt-row { display: flex; gap: 8px; }
+.newtap-card .nt-code { flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid var(--line-2);
+  background: var(--surface); color: var(--ink); font-size: 18px; letter-spacing: .3em; text-align: center;
+  font-family: inherit; }
+.newtap-card .nt-code:focus { outline: none; border-color: var(--accent); }
+.newtap-card .nt-btn { height: 44px; padding: 0 18px; border: none; border-radius: 999px; background: var(--accent);
+  color: var(--accent-fg); font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; }
+.newtap-card .nt-btn.wide { width: 100%; }
+.newtap-card .nt-btn:disabled { opacity: .5; }
+.newtap-card .nt-msg { font-size: 13px; color: var(--ink-2); margin-top: 10px; min-height: 0; }
+.newtap-card .nt-msg.err { color: #ff8a80; }
 
 /* Tapstr app only (updateAppSwitchBtn): back to the app's list of Tapstrs */
 .app-mobile .app-switch-btn {
@@ -9566,8 +9606,8 @@ const DEVICE_COMMAND_CONFIG = {
 // Command configurations for system-wide commands
 const SYSTEM_COMMAND_CONFIG = {
     scan_devices: {
-        title: 'Scan for New Device',
-        message: 'Start scanning for new Tapstr devices?\n\nThis will search for unconfigured devices nearby.',
+        title: 'Add a tap',
+        message: "Switch the new tap on. Scan the code on its screen with the Tapstr app, or tap Adopt on this Tapstr's screen when the banner appears.\n\nLook for the new tap now?",
         destructive: false,
         icon: 'scan',
         action: 'scan_slaves'
@@ -9770,6 +9810,11 @@ async function triggerUIUpdate() {
 
 // System command entry point (shows confirmation modal)
 function executeSystemCommand(action) {
+    // In the Tapstr app, adding a tap is a scan of its screen.
+    if (action === 'scan_devices' && window.TapstrApp && typeof window.TapstrApp.postMessage === 'function') {
+        window.TapstrApp.postMessage('add');
+        return;
+    }
     const config = SYSTEM_COMMAND_CONFIG[action];
     if (!config) {
         console.error('Unknown system command:', action);
@@ -9954,7 +9999,8 @@ async function runAdoptionScan(config) {
         if (!status) {
             showToast("Couldn't get a scan result from the primary tap", 'error', 6000);
         } else if (status.state === 'found') {
-            showToast(`Found ${status.ssid}. Tap Adopt on the primary tap's screen, then enter the 2-digit code shown on the new tap.`, 'success', 10000);
+            if (window.newTapCard) window.newTapCard.show(status.ssid);
+            else showToast(`Found ${status.ssid}. Tap Adopt on the primary tap's screen, then enter the 2-digit code shown on the new tap.`, 'success', 10000);
         } else if (status.state === 'not_found') {
             showToast('No new taps found. Make sure the new tap is powered on and showing its setup code, then try again.', 'info', 8000);
         } else {
@@ -9966,6 +10012,137 @@ async function runAdoptionScan(config) {
         showToast(`${config.title} failed`, 'error');
     }
 }
+
+// =============================================================================
+// "NEW TAP FOUND" CARD
+// The main Tapstr scans for unadopted taps every 60 s; /api/adoption/pending
+// reports one seen in the last 3 minutes. Adding it still needs the 2-digit
+// code on the new tap's own screen (proves someone is standing at it):
+//   Tapstr app - "Scan the code on its screen" opens the app's scanner (the QR
+//                carries the code)
+//   browser    - type the code, then POST /api/adoption/adopt
+// The main Tapstr leaves home WiFi for ~15-30 s while it adds the tap, so the
+// result is read back from /api/adoption/status once it returns.
+// =============================================================================
+window.newTapCard = (function () {
+    const inApp = () => !!(window.TapstrApp && typeof window.TapstrApp.postMessage === 'function');
+    const dismissed = {};
+    let el = null, shownId = null, busy = false;
+
+    function build() {
+        if (el) return el;
+        el = document.createElement('div');
+        el.className = 'newtap-card';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-live', 'polite');
+        el.innerHTML = `
+          <div class="nt-head">
+            <span class="nt-dot"></span>
+            <div class="nt-title">New tap found</div>
+            <button class="nt-close" aria-label="Not now">&times;</button>
+          </div>
+          <div class="nt-sub"></div>
+          <div class="nt-row nt-app"><button class="nt-btn wide nt-scan">Scan the code on its screen</button></div>
+          <div class="nt-row nt-web">
+            <input class="nt-code" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="00" aria-label="Code on its screen">
+            <button class="nt-btn nt-add">Add</button>
+          </div>
+          <div class="nt-msg"></div>`;
+        document.body.appendChild(el);
+        el.querySelector('.nt-close').onclick = () => { if (shownId) dismissed[shownId] = true; hide(true); };
+        el.querySelector('.nt-scan').onclick = () => window.TapstrApp.postMessage('add');
+        el.querySelector('.nt-add').onclick = () => add();
+        el.querySelector('.nt-code').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+        return el;
+    }
+
+    function setMsg(text, err) {
+        const m = build().querySelector('.nt-msg');
+        m.textContent = text || '';
+        m.classList.toggle('err', !!err);
+    }
+
+    function show(ssid) {
+        const id = String(ssid || '').replace(/^tapstr/i, '').toUpperCase();
+        if (!/^[0-9A-F]{4}$/.test(id) || dismissed[id]) return;
+        build();
+        if (shownId !== id) {
+            shownId = id;
+            el.querySelector('.nt-sub').textContent = inApp()
+                ? `tapstr${id} is switched on and ready to add.`
+                : `tapstr${id} is switched on. Enter the 2-digit code on its screen to add it.`;
+            el.querySelector('.nt-app').style.display = inApp() ? '' : 'none';
+            el.querySelector('.nt-web').style.display = inApp() ? 'none' : '';
+            el.querySelector('.nt-code').value = '';
+            setMsg('');
+        }
+        el.classList.add('show');
+    }
+
+    function hide(force) {
+        if (busy && !force) return;
+        if (el) el.classList.remove('show');
+        shownId = null;
+    }
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    async function add() {
+        if (busy || !shownId) return;
+        const code = el.querySelector('.nt-code').value.trim();
+        if (!/^[1-9][0-9]$/.test(code)) { setMsg('Enter the 2-digit code shown on the new tap.', true); return; }
+        const id = shownId;
+        const btn = el.querySelector('.nt-add');
+        busy = true; btn.disabled = true;
+        setMsg('Adding the tap. Your Tapstr goes offline for about 30 seconds while it does this...');
+        try {
+            const r = await fetch('/api/adoption/adopt', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, code: parseInt(code, 10) })
+            });
+            const j = await r.json().catch(() => ({}));
+            if (j.status !== 'accepted') throw new Error(j.reason || "Your Tapstr couldn't start adding the tap");
+            const deadline = Date.now() + 120000;
+            while (Date.now() < deadline) {
+                await sleep(2500);
+                let st;
+                try { st = await (await fetch('/api/adoption/status', { cache: 'no-store' })).json(); }
+                catch (_) { continue; }   // offline while it's on the new tap's network
+                if (st.seq !== j.seq) continue;
+                if (st.state === 'adopted') {
+                    setMsg('Tap added. Opening its setup...');
+                    await sleep(1500);
+                    location.href = st.mac ? '/setup?mac=' + encodeURIComponent(st.mac) : '/';
+                    return;
+                }
+                if (st.state === 'wrong_code') throw new Error("That code didn't match. Check the code on the new tap's screen and try again.");
+                if (st.state === 'not_found') throw new Error("Couldn't reach the new tap. Check it's switched on and near your Tapstr.");
+                if (st.state === 'failed') throw new Error('Adding the tap failed. Try again.');
+                if (st.state === 'refused') throw new Error(st.reason || "Your Tapstr couldn't add the tap.");
+            }
+            throw new Error("Your Tapstr didn't report back. Refresh the page and check the tap list.");
+        } catch (e) {
+            setMsg(e.message, true);
+        } finally {
+            busy = false; btn.disabled = false;
+        }
+    }
+
+    async function poll() {
+        if (document.hidden || busy) return;
+        try {
+            const r = await fetch('/api/adoption/pending', { cache: 'no-store' });
+            if (!r.ok) return;
+            const j = await r.json();
+            if (j.found && j.ssid) show(j.ssid); else hide();
+        } catch (_) { /* offline: leave the card as it is */ }
+    }
+
+    setTimeout(poll, 4000);
+    setInterval(poll, 15000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+    return { show, hide, poll };
+})();
 
 function showCommandSpinner(action) {
     let overlay = document.getElementById('commandSpinnerOverlay');
