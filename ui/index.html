@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.8 -->
+<!-- tapstr-ui-version: 1.22.9 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13593,6 +13593,8 @@ function _suStandalone() {
 // Home-screen prompt: master's first run, on a phone/tablet, not already
 // launched from the home screen. Desktop browsers just bookmark.
 function _suHomescreenEligible() {
+  // Not in the Tapstr app: it is already on the home screen.
+  if (window.TapstrApp && typeof window.TapstrApp.postMessage === 'function') return false;
   return _su.tap === 0 && (_su.mode === 'full' || _su.mode === 'homescreen')
       && !_suStandalone() && _suPlatform() !== 'desktop';
 }
@@ -14191,10 +14193,18 @@ function _suClose() {
 // The slave's own QR carries its MAC; map it to this dashboard's device id.
 // A just-adopted slave can take a few seconds to appear in the list.
 async function _suResolveMac(mac) {
-  const norm = function(s){ return String(s || '').replace(/[^0-9a-f]/gi, '').toUpperCase(); };
+  // Ignores the locally-administered bit (0x02) of the first byte, as the
+  // firmware's SlaveRegistry does: a tap's softAP MAC has it set, the MAC it
+  // registers with doesn't, and older firmware reported the softAP form.
+  const norm = function(s){
+    const h = String(s || '').replace(/[^0-9a-f]/gi, '').toUpperCase();
+    if (h.length !== 12) return h;
+    return (parseInt(h.slice(0, 2), 16) & ~0x02).toString(16).toUpperCase().padStart(2, '0') + h.slice(2);
+  };
   const want = norm(mac);
   _su.name = '';
-  for (let tries = 0; tries < 20; tries++) {
+  // Up to ~90 s: after an adoption both the new tap and this Tapstr restart.
+  for (let tries = 0; tries < 30; tries++) {
     const list = await fetchDevicesList();
     const hit = list.find(function(d){ return norm(d.mac) === want; });
     if (hit) {
@@ -14205,7 +14215,7 @@ async function _suResolveMac(mac) {
     }
     if (!document.getElementById('setupWizard').classList.contains('active')) return null;
     _suFrame({ title: 'Looking for this tap…',
-      sub: 'It needs to be added to this Tapstr first. Accept it on the main tap’s screen, then this page will continue.' });
+      sub: 'It’s restarting to join your WiFi. This takes about 30 seconds.' });
     await new Promise(function(r){ setTimeout(r, 3000); });
   }
   _suFrame({ title: 'Tap not found', sub: 'This tap hasn’t joined this Tapstr yet. Add it from the main tap’s screen, then scan its code again.',
