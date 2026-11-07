@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.9 -->
+<!-- tapstr-ui-version: 1.22.10 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10138,8 +10138,8 @@ window.newTapCard = (function () {
         } catch (_) { /* offline: leave the card as it is */ }
     }
 
-    setTimeout(poll, 4000);
-    setInterval(poll, 15000);
+    setTimeout(poll, 3000);
+    setInterval(poll, 5000);   // a new tap announces itself, so it shows within seconds
     document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
     return { show, hide, poll };
 })();
