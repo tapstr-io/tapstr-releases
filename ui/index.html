@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.10 -->
+<!-- tapstr-ui-version: 1.22.11 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13719,7 +13719,16 @@ function _suRenderStep() {
       foot: '<button type="button" class="su-btn primary" id="suGo">' + (done ? 'Run setup again' : 'Start') + '</button>'
           + '<button type="button" class="su-btn link" id="suLater">' + (done ? 'Back to dashboard' : 'Do this later') + '</button>' });
     wrap.querySelector('#suGo').onclick = function(){ _suEnterFullscreen(); _suNext(); };
-    wrap.querySelector('#suLater').onclick = function(){ _suClose(); };
+    wrap.querySelector('#suLater').onclick = function(){
+      // Not set up yet: take the tap's own screen off its Finish Setup QR too
+      // (same as its Skip button). Old firmware ignores the unknown command.
+      if (!done) {
+        fetch('/api/devices/' + _su.tap + '/command', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'setup_later' }) }).catch(function(){});
+      }
+      _suClose();
+    };
     break;
   }
 
