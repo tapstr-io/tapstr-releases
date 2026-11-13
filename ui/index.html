@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.14 -->
+<!-- tapstr-ui-version: 1.22.15 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4147,7 +4147,7 @@ main {
 /* The line-setup drawing's own classes (LINE_SETUP_SVG's .o / .l / .g) */
 .su-ill-o { stroke: var(--tap-ill-outline, #A1A1AA); stroke-width: 3; }
 .su-ill-l { stroke: var(--tap-ill-line, #F5B82E); stroke-width: 3.5; }
-.su-ill-g { stroke: var(--tap-ill-guide, #52525B); stroke-width: 2; stroke-dasharray: 6 7; }
+.su-ill-g { stroke: var(--tap-ill-guide, #52525B); stroke-width: 2; stroke-dasharray: 6 7.18; }
 .su-ill-t { fill: var(--ink-3); stroke: none; font-size: 19px; font-family: inherit; }
 .su-foot { flex: none; display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
 .su-foot:empty { display: none; }
@@ -13603,7 +13603,7 @@ const _SU_ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 // <style> is global, and bare .o / .l / .g would hit the whole dashboard.
 const _SU_LINE_DIAGRAM =
   '<svg class="su-diagram" viewBox="0 0 480 320" fill="none" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Keg connected to a tap by a beer line, with tap height measured above the keg">' +
-    '<g class="su-ill-g"><path d="M148 170H452"/></g>' +
+    '<g class="su-ill-g"><path d="M147 170H456.2M410.64 80H456.2"/></g>' +
     '<g class="su-ill-l"><path d="M96 152C100 138 118 136 146 143C178 151 196 166 222 166C262 166 290 145 318 118C340 97 352 82 370 80"/></g>' +
     '<g class="su-ill-o">' +
       '<path d="M49 177A47 8 0 0 0 143 177M49 177A47 8 0 0 1 84 169.6M108 169.6A47 8 0 0 1 143 177"/>' +
@@ -13614,8 +13614,8 @@ const _SU_LINE_DIAGRAM =
       '<path d="M381 39H391L389 66H383Z"/><path d="M383 66H389V74H383Z"/><path d="M370 75H404V87H370Z"/>' +
       '<path d="M404 73H408V93H404Z"/><path d="M392 87V109H399V90"/>' +
     '</g>' +
-    '<g class="su-ill-o"><path d="M440 82V166M432 90L440 82L448 90M432 158L440 166L448 158"/></g>' +
-    '<text class="su-ill-t" x="428" y="140" text-anchor="end">Tap height</text>' +
+    '<g class="su-ill-o"><path d="M440 85V165M432 93L440 85L448 93M432 157L440 165L448 157"/></g>' +
+    '<text class="su-ill-t" x="428" y="135" text-anchor="end">Tap height</text>' +
     '<text class="su-ill-t" x="240" y="310" text-anchor="middle">Line length = full run of beer line</text>' +
   '</svg>';
 
