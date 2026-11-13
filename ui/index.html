@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.11 -->
+<!-- tapstr-ui-version: 1.22.12 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2027,6 +2027,17 @@ body.page-overlay-active .app-mobile .scroll-container {
   color: var(--ink-3); font-weight: 500;
 }
 .tap-pill-d.active .tap-pill-d-pct { color: var(--ink-2); }
+/* Two or more taps: the selected tap (dashboard and Settings selectors) in a
+   soft yellow tint - wash, edge, text. Solid yellow read too brash. A lone
+   tap keeps the quiet grey - there's nothing to pick between. No :has()
+   support just leaves the grey. */
+.tap-selector:has(.tap-pill-d + .tap-pill-d) .tap-pill-d.active,
+.device-tap-selector-d:has(.device-tap-pill-d + .device-tap-pill-d) .device-tap-pill-d.active {
+  background: var(--accent-soft); color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-line);
+}
+.tap-selector:has(.tap-pill-d + .tap-pill-d) .tap-pill-d.active .tap-pill-d-pct,
+.device-tap-selector-d:has(.device-tap-pill-d + .device-tap-pill-d) .device-tap-pill-d.active .device-tap-pill-pct-d { color: var(--accent-2); opacity: 0.75; }
 
 /* Main 3-col grid: hero | metric col | health */
 .main-row-d {
@@ -4120,6 +4131,13 @@ main {
 /* Fallback if a browser autofills anyway: keep the dark box instead of its white fill. */
 .su-input input:-webkit-autofill { -webkit-box-shadow: 0 0 0 100px var(--surface) inset; -webkit-text-fill-color: var(--ink); caret-color: var(--ink); }
 .su-input .u { font-size: 14px; color: var(--ink-3); margin-left: 8px; }
+/* 16px+ so iOS doesn't zoom on focus */
+.su-select { font: inherit; font-size: 17px; font-weight: 600; color: var(--ink); width: 100%; box-sizing: border-box;
+  background-color: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-md); padding: 12px 40px 12px 14px;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; }
+.su-select:focus { outline: none; border-color: var(--accent); }
 .su-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .su-chip { font: inherit; font-size: 13px; font-weight: 600; border-radius: var(--r-pill); padding: 7px 12px; cursor: pointer;
   background: var(--surface); border: 1px solid var(--line-2); color: var(--ink-2); }
@@ -4152,6 +4170,28 @@ main {
 .su-card.bad h4 .dot { background: var(--bad); }
 .su-card p { margin: 0; font-size: 14px; color: var(--ink-2); line-height: 1.5; }
 .su-card p + p { margin-top: 6px; }
+.su-card p b { color: var(--ink); }
+.su-card > p { margin-top: 12px; }
+.su-card h4 + p { margin-top: 0; }
+.su-sec { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.su-sec-cap { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
+.su-card ol { margin: 0; padding-left: 20px; font-size: 14px; color: var(--ink-2); line-height: 1.5; }
+.su-card ol li + li { margin-top: 6px; }
+/* Line balance card: short view by default, long view on "More detail" */
+.su-lc .su-lc-long { display: none; }
+.su-lc.more .su-lc-long { display: block; }
+.su-lc.more .su-lc-short { display: none; }
+.su-card p.su-lc-head { font-size: 15px; color: var(--ink); font-weight: 600; margin-top: 4px; }
+.su-lc-checks { list-style: none; margin: 10px 0 0; padding: 0; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+.su-lc-checks li { display: flex; gap: 8px; align-items: baseline; }
+.su-lc-checks li + li { margin-top: 4px; }
+.su-lc-checks i { font-style: normal; font-weight: 700; width: 14px; flex: none; text-align: center; color: var(--ink-4); }
+.su-lc-checks li.bad i { color: var(--bad); }
+.su-lc-checks li.ok i  { color: var(--ok); }
+.su-lc-short .su-sec-cap { margin-top: 12px; }
+.su-lc-toggle { display: block; margin: 14px auto 0; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink);
+  background: var(--surface-2); border: 1px solid var(--line-2); border-radius: var(--r-pill); padding: 9px 18px; cursor: pointer; }
+.su-lc-toggle svg { width: 12px; height: 12px; vertical-align: -1px; margin-left: 6px; }
 .su-cards { width: 100%; }
 /* Square badge preview. Empty state: black tile, dashed grey border, logo. */
 .su-badge-prev { width: min(200px, 46vw, 26vh); aspect-ratio: 1 / 1; height: auto; flex: none; border-radius: var(--r-md);
@@ -7368,9 +7408,24 @@ function hvP(psi, dp) {
 }
 function hvPVal(psi) { return hvPresUnit() === 'BAR' ? psi * 0.0689476 : psi; }
 function hvImperial() { return hvTempUnit() === 'F'; }
+// Line lengths and diameters follow the keg-size preference, not the
+// temperature one: litres -> cm and mm, gallons -> inches.
+function lenImperial() { return !!window._globalPrefsKegGallons; }
 function hvLen(m) {
   if (!hvNum(m)) return '--';
-  return hvImperial() ? (Math.round(m / 0.3048 * 2) / 2) + ' ft' : (Math.round(m * 10) / 10) + ' m';
+  return lenImperial() ? Math.round(m / 0.0254) + ' in' : Math.round(m * 100) + ' cm';
+}
+// Stored line IDs are the inch fractions the firmware keys on ('3/16"');
+// metric users see the nominal bore in mm. Display only - never POST this.
+const LINE_ID_MM = { '3/16"': 4.8, '1/4"': 6.4, '5/16"': 7.9, '3/8"': 9.5 };
+function lineIdText(id) {
+  if (!id) return '';
+  return (!lenImperial() && LINE_ID_MM[id]) ? LINE_ID_MM[id] + ' mm' : id;
+}
+// Millimetre prefs (tapHeight, lineLength) in the display unit
+function mmText(mm) {
+  if (mm == null || mm === '' || isNaN(mm)) return '--';
+  return lenImperial() ? (Math.round(mm / 25.4 * 10) / 10) + ' in' : (Math.round(mm / 10 * 10) / 10) + ' cm';
 }
 function hvDate(epoch) {
   if (!epoch) return '--';
@@ -7758,11 +7813,11 @@ function hvLineHTML(tap, compact) {
     ? 'Line and rise together hold back ' + hvP(l.needed) + ', close to the ' + hvP(l.psiTarget, 0) + ' gas setting '
       + (r.style || 'this beer') + ' needs. With the gas set there, pours should be clean.'
     : l.status === 'short'
-      ? 'Fit about ' + hvLen(l.lenNeeded) + ' of ' + (l.lineId || '') + ' tubing, or drop the gas to ' + hvP(l.needed) + '.'
+      ? 'Fit about ' + hvLen(l.lenNeeded) + ' of ' + lineIdText(l.lineId) + ' tubing, or drop the gas to ' + hvP(l.needed) + '.'
       : 'Shorten the line or raise the gas slightly; pours may be slow.';
   const summary = hvP(l.needed) + ' of ' + hvP(l.psiTarget, 0) + ' · ' + pillTxt;
   const boxes = '<div class="hv-boxes">'
-    + '<div><div class="k">Line</div><div class="v">' + hvLen(l.lineLen) + '</div><div class="s">' + hvEsc(l.lineId || '') + ', holds back ' + hvP(l.lineRes) + '</div></div>'
+    + '<div><div class="k">Line</div><div class="v">' + hvLen(l.lineLen) + '</div><div class="s">' + hvEsc(lineIdText(l.lineId)) + ', holds back ' + hvP(l.lineRes) + '</div></div>'
     + '<div><div class="k">Rise</div><div class="v">' + hvLen(l.riseLen) + '</div><div class="s">holds back ' + hvP(l.rise) + '</div></div>'
     + '<div><div class="k">Gas setting</div><div class="v">' + hvP(l.psiTarget, 0) + '</div><div class="s">for ' + hvEsc(r.style || '') + '</div></div>'
     + '</div>';
@@ -9426,18 +9481,18 @@ const BEER_STYLES = [
 const DEVICE_PREF_FIELDS = [
     { key: 'deviceName', label: 'Device name' },
     { key: 'beerStyle',  label: 'Beer style' },
-    { key: 'tapHeight',  label: 'Tap height above keg', unit: 'mm' },
-    { key: 'lineLength', label: 'Line length', unit: 'mm' },
-    { key: 'lineID',     label: 'Line inner diameter' }
+    { key: 'tapHeight',  label: 'Tap height above keg', fmt: mmText },
+    { key: 'lineLength', label: 'Line length', fmt: mmText },
+    { key: 'lineID',     label: 'Line inner diameter', fmt: lineIdText }
 ];
 
 function _renderDeviceSettingsSheet(deviceId, prefs) {
     const rows = DEVICE_PREF_FIELDS.map(f => {
         const raw = prefs[f.key];
-        const val = (raw === null || raw === undefined || raw === '') ? '--' : raw;
+        const val = (raw === null || raw === undefined || raw === '') ? '--' : (f.fmt ? f.fmt(raw) : raw);
         return '<button type="button" class="sh-navrow" data-pref="' + f.key + '">' +
             '<span class="k">' + f.label + '</span>' +
-            '<span class="right">' + _sheetEsc(val) + (f.unit ? ' ' + f.unit : '') + ' <span class="chev">&rsaquo;</span></span>' +
+            '<span class="right">' + _sheetEsc(val) + ' <span class="chev">&rsaquo;</span></span>' +
         '</button>';
     }).join('');
     const html =
@@ -9474,20 +9529,21 @@ function _editDevicePrefField(deviceId, prefs, key) {
         sheetSelect({ title: 'Beer style', sub: name, options: BEER_STYLES, value: prefs.beerStyle || 'Lager',
             onConfirm: save, onCancel: null });
     } else if (key === 'lineID') {
-        sheetSelect({ title: 'Line inner diameter', sub: name, options: LINE_DIAMETERS, value: prefs.lineID || '3/16"',
-            onConfirm: save, onCancel: null });
+        sheetSelect({ title: 'Line inner diameter', sub: name,
+            options: LINE_DIAMETERS.map(function(d){ return { label: lineIdText(d), value: d }; }),
+            value: prefs.lineID || '3/16"', onConfirm: save, onCancel: null });
     } else if (key === 'deviceName') {
         sheetInput({ title: 'Device name', sub: 'Shown on dashboard and badge', mode: 'field', text: true,
             value: prefs.deviceName || '',
             onConfirm: function(v){ save(v || name); }, onCancel: null });
-    } else if (key === 'tapHeight') {
-        sheetInput({ title: 'Tap height above keg', sub: name, mode: 'field', fieldCap: 'Height',
-            value: prefs.tapHeight || 0, unit: 'mm', min: 0, max: 5000,
-            onConfirm: save, onCancel: null });
-    } else if (key === 'lineLength') {
-        sheetInput({ title: 'Line length', sub: name, mode: 'field', fieldCap: 'Length',
-            value: prefs.lineLength || 0, unit: 'mm', min: 0, max: 10000,
-            onConfirm: save, onCancel: null });
+    } else if (key === 'tapHeight' || key === 'lineLength') {
+        // Edited in cm or inches (keg-size preference), stored in mm
+        const per = lenImperial() ? 25.4 : 10, maxMm = (key === 'tapHeight') ? 5000 : 10000;
+        sheetInput({ title: key === 'tapHeight' ? 'Tap height above keg' : 'Line length', sub: name, mode: 'field',
+            fieldCap: key === 'tapHeight' ? 'Height' : 'Length',
+            value: Math.round((prefs[key] || 0) / per * 10) / 10, unit: lenImperial() ? 'in' : 'cm',
+            min: 0, max: Math.floor(maxMm / per),
+            onConfirm: function(v){ save(Math.round(v * per)); }, onCancel: null });
     }
 }
 
@@ -9541,6 +9597,10 @@ async function openDeviceSettings(deviceId, deviceName, focusKey) {
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const loaded = await response.json();
         prefs = Object.assign(prefs, loaded);
+        // Same lag as fetchDeviceMetrics(): this sheet POSTs every field, so a
+        // stale copy here would write the old line values back over a save
+        const js = _devicePrefsJustSaved[deviceId];
+        if (js && Date.now() < js.until) Object.assign(prefs, js.prefs);
         if (!prefs.deviceName) prefs.deviceName = deviceName;
         console.log('Device prefs loaded:', prefs);
     } catch (error) {
@@ -11021,9 +11081,9 @@ function mobPopulateDevicePrefs(deviceId) {
   // Match wireframe format: "DEVICE · {NAME}" (CSS handles uppercase)
   if (lbl) lbl.textContent = device && device.name ? 'Device \u00b7 ' + device.name : 'Device';
   document.getElementById('mobSrStyle').textContent      = info.beerStyle  || '\u2014';
-  document.getElementById('mobSrTapHeight').textContent  = (info.tapHeight  != null ? info.tapHeight  + ' mm'  : '\u2014');
-  document.getElementById('mobSrLineLength').textContent = (info.lineLength != null ? info.lineLength + ' mm'  : '\u2014');
-  document.getElementById('mobSrLineId').textContent     = info.lineID     || '\u2014';
+  document.getElementById('mobSrTapHeight').textContent  = (info.tapHeight  != null ? mmText(info.tapHeight)  : '\u2014');
+  document.getElementById('mobSrLineLength').textContent = (info.lineLength != null ? mmText(info.lineLength) : '\u2014');
+  document.getElementById('mobSrLineId').textContent     = info.lineID ? lineIdText(info.lineID) : '\u2014';
 }
 
 function mobEditDevicePref(prefKey) {
@@ -11897,11 +11957,15 @@ function dtRenderDeviceInputs() {
   const meta = dtBuildTapMeta(dtActiveDevice);
   if (!meta) { el.innerHTML = ''; return; }
   const info = meta.metrics.info || {};
+  // Number and unit split for the tile's two spans: "152 cm" -> 152 / cm
+  const split = function(mm){ const t = mmText(mm); const i = t.lastIndexOf(' '); return i > 0 ? [t.slice(0, i), t.slice(i + 1)] : [t, '']; };
+  const th = info.tapHeight  != null ? split(info.tapHeight)  : ['--', ''];
+  const ll = info.lineLength != null ? split(info.lineLength) : ['--', ''];
   const rows = [
     { label: 'Beer Style',           value: info.beerStyle || meta.beerStyle, unit: '', key: 'beerStyle' },
-    { label: 'Tap Height Above Keg', value: info.tapHeight  != null ? info.tapHeight  : '--', unit: 'mm',   key: 'tapHeight' },
-    { label: 'Line Length',          value: info.lineLength != null ? info.lineLength : '--', unit: 'mm',   key: 'lineLength' },
-    { label: 'Line Inner Diameter',  value: info.lineID || '--', unit: '', key: 'lineID' }
+    { label: 'Tap Height Above Keg', value: th[0], unit: th[1], key: 'tapHeight' },
+    { label: 'Line Length',          value: ll[0], unit: ll[1], key: 'lineLength' },
+    { label: 'Line Inner Diameter',  value: info.lineID ? hvEsc(lineIdText(info.lineID)) : '--', unit: '', key: 'lineID' }
   ];
   el.innerHTML = rows.map(r =>
     '<div class="device-input-tile-d">'
@@ -13492,6 +13556,12 @@ function _badgeCacheUpdate(deviceId, isMaster, filename, meta) {
     if (meta.style && currentDeviceMetrics[deviceId] && currentDeviceMetrics[deviceId].info) {
       currentDeviceMetrics[deviceId].info.beerStyle = meta.style;
     }
+    // Setup wizard's badge step: the line step preselects this style, and the
+    // wizard header shows the beer's name from here on, not "Tapstr-XXXX"
+    if (_su.step === 'badge' && _su.tap === deviceId) {
+      if (meta.style) _su.a.beerStyle = meta.style;
+      if (meta.name) _su.name = meta.name;
+    }
   }
   try { if (typeof renderMobileShell === 'function') renderMobileShell(); } catch(_) {}
   try { if (typeof renderDesktopShell === 'function') renderDesktopShell(); } catch(_) {}
@@ -13547,7 +13617,6 @@ function _suEl() {
   return o;
 }
 
-function _suImperial() { return _su.prefs.tempScaleCelsius === false; }
 function _suKegGallons() { return !!_su.prefs.kegSizeUnit; }
 
 function _suSequence() {
@@ -13562,9 +13631,11 @@ function _suSequence() {
     if (a.install === 'existing') s.push('kegLeft', 'kegAge');
   }
   if (a.install !== 'new') s.push('cleaned');
-  s.push('line', 'apply');
+  // Badge before line: it names the beer and its style, which the line step
+  // preselects and the line advice is judged against. Safe ahead of apply's
+  // tap_keg - the dashboard's own keg flow does badge first too.
   if (a.keg) s.push('badge');
-  s.push('done');
+  s.push('line', 'apply', 'done');
   if (_suHomescreenEligible()) s.push('homescreen');
   return s;
 }
@@ -13654,8 +13725,9 @@ function _suFrame(o) {
   const idx = Math.max(0, seq.indexOf(_su.step));
   // 'homescreen' mode is the last step of a wizard begun on the IP origin
   const pct = _su.mode === 'homescreen' ? 100 : Math.round((idx / Math.max(1, seq.length - 1)) * 100);
-  // No going back once writes have been sent
-  const noBack = !_su.hist.length || ['apply', 'badge', 'done', 'homescreen'].includes(_su.step);
+  // No going back once writes have been sent (the badge step's own write
+  // stands alone - going back past it undoes nothing on the device)
+  const noBack = !_su.hist.length || ['apply', 'done', 'homescreen'].includes(_su.step);
   const wrap = document.getElementById('suWrap');
   // Head and foot are fixed; only .su-body scrolls (see the .su-* CSS)
   wrap.innerHTML =
@@ -13703,6 +13775,19 @@ function _suDeviceSetupDone() {
   if (_su.dprefs && _su.dprefs.setupDone != null) return !!_su.dprefs.setupDone;
   const m = currentDeviceMetrics[_su.tap];
   return !!(m && m.info && m.info.setupDone);
+}
+
+// The style to preselect on the line step and judge the line against: what
+// the user picked here or in the badge step (null = chose "Choose a style"),
+// else the tap's current style if a badge is on it. Without a badge the
+// device's style is only the firmware's "Lager" default, so it isn't used.
+function _suKnownStyle() {
+  if (_su.a.beerStyle !== undefined) return _su.a.beerStyle;
+  const badge = (typeof deviceBadges !== 'undefined') ? deviceBadges[_su.tap] : null;
+  if (!(badge && badge.url)) return null;
+  const m = currentDeviceMetrics[_su.tap];
+  const st = (m && m.info && m.info.beerStyle) || _su.dprefs.beerStyle;
+  return BEER_STYLES.includes(st) ? st : null;
 }
 
 function _suRenderStep() {
@@ -13852,23 +13937,30 @@ function _suRenderStep() {
     break;
 
   case 'line': {
-    const imp = _suImperial();
-    const hU = imp ? 'in' : 'cm', hF = imp ? 25.4 : 10;
-    const lU = imp ? 'ft' : 'm',  lF = imp ? 304.8 : 1000;
+    // Lengths follow the keg-size unit: litres -> cm, gallons -> inches
+    const imp = _suKegGallons();
+    const lU = imp ? 'in' : 'cm', lF = imp ? 25.4 : 10;
     const prior = a.line || _su.dprefs || {};
-    const fmt = function(mm, f){ return (mm > 0) ? String(Math.round((mm / f) * 10) / 10) : ''; };
+    const fmt = function(mm){ return (mm > 0) ? String(Math.round((mm / lF) * 10) / 10) : ''; };
     const curID = prior.lineID || '3/16"';
-    const wrap = _suFrame({ title: 'Measure the line', sub: 'Used to check the line is balanced for your gas pressure, which is the most common cause of foamy pours.',
+    const curStyle = _suKnownStyle();
+    const wrap = _suFrame({ title: 'Your line setup', sub: 'Used to check the line is balanced for your beer and gas pressure, which is the most common cause of foamy pours.',
       body: '<div class="su-line-grid">' + _SU_LINE_DIAGRAM + '<div>'
         + '<div class="su-field"><div class="su-field-cap">Tap height above the keg</div>'
-        +   '<div class="su-input"><input id="suTapH" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="e.g. ' + (imp ? '24' : '60') + '" value="' + fmt(prior.tapHeight, hF) + '"><span class="u">' + hU + '</span></div>'
+        +   '<div class="su-input"><input id="suTapH" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="e.g. ' + (imp ? '24' : '60') + '" value="' + fmt(prior.tapHeight) + '"><span class="u">' + lU + '</span></div>'
         +   '<div class="su-field-hint">From the top of the keg up to the faucet.</div></div>'
         + '<div class="su-field"><div class="su-field-cap">Beer line length</div>'
-        +   '<div class="su-input"><input id="suLineL" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="e.g. ' + (imp ? '5' : '1.5') + '" value="' + fmt(prior.lineLength, lF) + '"><span class="u">' + lU + '</span></div>'
+        +   '<div class="su-input"><input id="suLineL" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="e.g. ' + (imp ? '60' : '150') + '" value="' + fmt(prior.lineLength) + '"><span class="u">' + lU + '</span></div>'
         +   '<div class="su-field-hint">The full run of beer line from keg coupler to faucet.</div></div>'
         + '<div class="su-field"><div class="su-field-cap">Line inner diameter</div>'
-        +   '<div class="su-chips" id="suLineID">' + LINE_DIAMETERS.map(function(d){ return '<button type="button" class="su-chip' + (d === curID ? ' active' : '') + '" data-v="' + _sheetEsc(d) + '">' + _sheetEsc(d) + '</button>'; }).join('') + '</div>'
-        +   '<div class="su-field-hint">Most homebrew and kegerator lines are 3/16".</div></div>'
+        +   '<div class="su-chips" id="suLineID">' + LINE_DIAMETERS.map(function(d){ return '<button type="button" class="su-chip' + (d === curID ? ' active' : '') + '" data-v="' + _sheetEsc(d) + '">' + _sheetEsc(lineIdText(d)) + '</button>'; }).join('') + '</div>'
+        +   '<div class="su-field-hint">Most homebrew and kegerator lines are ' + _sheetEsc(lineIdText('3/16"')) + '.</div></div>'
+        + '<div class="su-field"><div class="su-field-cap">Beer style</div>'
+        +   '<select class="su-select" id="suStyle">'
+        +     '<option value=""' + (curStyle ? '' : ' selected') + '>Choose a style</option>'
+        +     BEER_STYLES.map(function(st){ return '<option value="' + _sheetEsc(st) + '"' + (st === curStyle ? ' selected' : '') + '>' + _sheetEsc(st) + '</option>'; }).join('')
+        +   '</select>'
+        +   '<div class="su-field-hint">Sets the pressure and temperature the line is balanced for.</div></div>'
         + '</div></div>',
       foot: '<button type="button" class="su-btn primary" id="suNext">Next</button>'
           + '<button type="button" class="su-btn link" id="suSkip">I’ll measure later</button>' });
@@ -13879,17 +13971,21 @@ function _suRenderStep() {
         lineID = chip.dataset.v;
       };
     });
+    // Kept on every exit (Next, skip, back) so the choice survives a revisit
+    const styleSel = wrap.querySelector('#suStyle');
+    styleSel.onchange = function(){ a.beerStyle = styleSel.value || null; };
     wrap.querySelector('#suNext').onclick = function(){
+      a.beerStyle = styleSel.value || null;
       const h = parseFloat(wrap.querySelector('#suTapH').value);
       const l = parseFloat(wrap.querySelector('#suLineL').value);
-      const hmm = Math.round(h * hF), lmm = Math.round(l * lF);
+      const hmm = Math.round(h * lF), lmm = Math.round(l * lF);
       // Firmware bounds: tapHeight 0-5000 mm, lineLength 0-10000 mm
       if (!(hmm >= 0 && hmm <= 5000)) { showToast('Tap height looks off - check the units', 'error'); return; }
       if (!(lmm > 0 && lmm <= 10000)) { showToast('Line length looks off - check the units', 'error'); return; }
       a.line = { tapHeight: hmm, lineLength: lmm, lineID: lineID };
       _suNext();
     };
-    wrap.querySelector('#suSkip').onclick = function(){ a.line = null; _suNext(); };
+    wrap.querySelector('#suSkip').onclick = function(){ a.beerStyle = styleSel.value || null; a.line = null; _suNext(); };
     break;
   }
 
@@ -13952,7 +14048,25 @@ async function _suApply() {
     if (a.keg) m.tappedDaysAgo = (a.install === 'new') ? 0 : a.kegAge;
     tasks.push(['Recording cleaning and keg dates', function(){ return cmd('set_maintenance', m); }]);
   }
-  if (a.line) tasks.push(['Saving line measurements', function(){ return _suPost('/api/devices/' + dev + '/device-prefs', a.line); }]);
+  // Line and style in one device-prefs write. The device also copies the
+  // style onto the showing badge's manifest entry, so a style changed on the
+  // line step keeps the badge and the tap in step.
+  const dp = Object.assign({}, a.line || {});
+  if (a.beerStyle) dp.beerStyle = a.beerStyle;
+  if (Object.keys(dp).length) {
+    tasks.push([a.line ? 'Saving line measurements' : 'Saving the beer style', async function(){
+      await _suPost('/api/devices/' + dev + '/device-prefs', dp);
+      // Dashboard and Settings show it now, not a poll later. A secondary
+      // tap's prefs are re-read into the master's cache only after the
+      // forwarded POST lands, so a refresh straight away would still read
+      // the old (zero) line - _devicePrefsJustSaved covers that window.
+      if (!currentDeviceMetrics[dev]) currentDeviceMetrics[dev] = {};
+      if (!currentDeviceMetrics[dev].info) currentDeviceMetrics[dev].info = {};
+      Object.assign(currentDeviceMetrics[dev].info, dp);
+      _devicePrefsJustSaved[dev] = { prefs: dp, until: Date.now() + 15000 };
+      Object.assign(_su.dprefs, dp);
+    }]);
+  }
 
   const wrap = _suFrame({ title: 'Saving to your tap', sub: null,
     body: '<ul class="su-steps">' + tasks.map(function(t, i){ return '<li data-i="' + i + '"><i></i>' + _sheetEsc(t[0]) + '</li>'; }).join('') + '</ul>' });
@@ -14014,7 +14128,6 @@ async function _suDone() {
   const cards = await _suSummaryCards();
   if (_su.step !== 'done') return;   // closed meanwhile
   const w = _suFrame({ title: _su.mode === 'line' ? 'Line saved' : 'You’re all set',
-    sub: _su.mode === 'line' ? null : 'Here’s where ' + _su.name + ' stands.',
     body: '<div class="su-cards">' + cards + '</div>',
     foot: '<button type="button" class="su-btn primary" id="suDash">' + (more ? 'Next' : 'Go to dashboard') + '</button>' });
   const btn = w.querySelector('#suDash');
@@ -14031,20 +14144,22 @@ async function _suDone() {
   };
 }
 
-// End-of-setup overview, built from what was actually entered and measured.
-// Deliberately not the old generic line advice: that compared the line to a
-// beer style's target and ignores the regulator, and the style falls back to
-// the firmware default "Lager" before any badge is set - so it said "well
-// balanced for Lager" for almost any setup. Presentation only: tap health is
-// scored by the firmware (HealthEngine.cpp) and read from /api/health.
+// End-of-setup overview, built from what was entered and measured.
+// The line card is the user's first line-balance advice, so it spells out
+// what the style wants, how this setup differs, what a pour will be like and
+// what to change. The style is the one picked in the wizard (badge or line
+// step), never re-read from the device: a secondary tap's device-prefs come
+// from the master's poll cache, which still says "Lager" just after setup.
+// The judging is the firmware's: POST /api/health/simulate runs HealthEngine
+// on these inputs (rule 17 - no scoring here); this only words the result.
 async function _suSummaryCards() {
   const tap = _su.tap, a = _su.a, isNew = a.install === 'new';
   const res = await Promise.all([
     fetch('/api/devices/' + tap + '/device-prefs').then(function(r){ return r.json(); }).catch(function(){ return null; }),
-    fetch('/api/devices/' + tap + '/pressure').then(function(r){ return r.json(); }).catch(function(){ return null; })
+    fetch('/api/devices/' + tap + '/health').then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
   ]);
   if (res[0]) Object.assign(_su.dprefs, res[0]);
-  const pr = res[1];
+  const live = res[1];
 
   const card = function(cls, title, paras){
     return '<div class="su-card ' + cls + '"><h4><span class="dot"></span>' + _sheetEsc(title) + '</h4>'
@@ -14052,61 +14167,22 @@ async function _suSummaryCards() {
   };
   const out = [];
 
-  // Beer style is only "known" once a badge is on the tap (badge = keg); the
-  // device-prefs style is otherwise just the "Lager" default.
-  const badge = (typeof deviceBadges !== 'undefined') ? deviceBadges[tap] : null;
-  const style = (badge && badge.url && _su.dprefs.beerStyle) ? _su.dprefs.beerStyle : null;
-  const range = style ? getStyleConfig(style).psi : { min: 10, max: 14 };
-  const forWhat = style ? style : 'Most beers';
-
-  const presUnit = (pr && pr.unit) ? String(pr.unit).toUpperCase() : (_su.prefs.gasLinePSI === false ? 'BAR' : 'PSI');
-  const bar = presUnit === 'BAR';
-  const fmtP = function(psi){ return formatPressureUnit(psi, presUnit); };
-  const fmtRange = function(lo, hi){ return bar ? (lo * 0.0689476).toFixed(2) + '–' + (hi * 0.0689476).toFixed(2) + ' bar' : lo + '–' + hi + ' PSI'; };
-  const fmtLen = function(ft){ return _suImperial() ? (Math.round(ft * 2) / 2) + ' ft' : (Math.round(ft * 0.3048 * 10) / 10) + ' m'; };
-  let regPSI = null;
-  if (pr && pr.status === 'ok' && pr.hasReading !== false && typeof pr.current === 'number' && pr.current > 0.5) {
-    regPSI = bar ? pr.current / 0.0689476 : pr.current;
-  }
-
-  // ---- Line: what the line is built for vs what the regulator is doing ----
+  // ---- Line balance ----
   const ln = a.line || ((_su.dprefs.lineLength > 0) ? _su.dprefs : null);
+  const style = _suKnownStyle();
   if (!ln) {
     out.push(card('warn', 'Line not measured yet',
-      ['Add the line length, inner diameter and tap height from this tap’s health page to check the line is balanced.']));
+      ['Add the line length, inner diameter and tap height from this tap’s health page to check the line is balanced'
+        + (style ? ' for ' + style : '') + '.']));
   } else {
-    const lb = calculateLineBalance(ln.lineLength, ln.tapHeight || 0, ln.lineID || '3/16"');
-    const suits = parseFloat(lb.calculatedPSI);
-    const styleNote = style ? null : 'Add a tap badge with the beer style to get advice tuned to what’s pouring.';
-    if (regPSI != null) {
-      const diff = regPSI - suits;
-      if (Math.abs(diff) <= 1.5) {
-        const inStyle = regPSI >= range.min - 0.5 && regPSI <= range.max + 0.5;
-        out.push(card(inStyle ? 'ok' : 'warn', 'Line balanced', [
-          'Your regulator (' + fmtP(regPSI) + ') matches what this line is built for (' + fmtP(suits) + '), so pours should be clean.',
-          inStyle ? null : forWhat + ' usually pour at ' + fmtRange(range.min, range.max) + ', so carbonation may drift over time.',
-          styleNote]));
-      } else if (diff > 1.5) {
-        out.push(card('warn', 'Expect foamy pours', [
-          'The regulator is at ' + fmtP(regPSI) + ' but this line only holds back about ' + fmtP(suits) + '.',
-          'Drop the regulator to about ' + fmtP(suits) + ', or add roughly ' + fmtLen(diff / lb.resistancePerFoot) + ' of ' + lb.lineSize + ' line.',
-          styleNote]));
-      } else {
-        out.push(card('warn', 'Pours will be slow', [
-          'The regulator is at ' + fmtP(regPSI) + ', below the ' + fmtP(suits) + ' this line is built for. Pours will be slow and the beer can lose carbonation.',
-          'Raise the regulator towards ' + fmtP(suits) + ', or shorten the line.',
-          styleNote]));
-      }
-    } else {
-      const inRange = suits >= range.min && suits <= range.max;
-      out.push(card(inRange ? 'ok' : 'warn', inRange ? 'Line looks right' : 'Line may need adjusting', [
-        'This line suits about ' + fmtP(suits) + ' at the regulator. ' + forWhat + ' usually pour at ' + fmtRange(range.min, range.max) + '.',
-        inRange ? 'Set your regulator to around ' + fmtP(suits) + ' for clean pours.'
-                : (suits < range.min ? 'The line is short for that pressure, so expect foam unless you lengthen it.'
-                                     : 'The line is long for that pressure, so pours may be slow.'),
-        'There’s no pressure reading yet, so this is from your measurements only.',
-        styleNote]));
+    let html = null;
+    try { html = await _suLineCard(ln, style, live); } catch (e) { console.warn('Line advice failed:', e); }
+    if (!html) {
+      // Simulator unreachable: describe the line, judge nothing
+      const lb = calculateLineBalance(ln.lineLength, ln.tapHeight || 0, ln.lineID || '3/16"');
+      html = card('', 'Line saved', ['This line holds back about ' + hvP(parseFloat(lb.calculatedPSI)) + '. Open this tap’s health page for advice on balancing it.']);
     }
+    out.push(html);
   }
 
   if (_su.mode === 'full') {
@@ -14141,6 +14217,186 @@ async function _suSummaryCards() {
     }
   }
   return out.join('');
+}
+
+// One firmware judgement of the given inputs (HealthEngine via the stateless
+// simulator - nothing on the device changes). Returns the /api/health tap shape.
+async function _suSimulate(inputs) {
+  const res = await fetch('/api/health/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ taps: [inputs] }) });
+  // Firmware before the HealthService::simulate fix serialised line.lineId
+  // from freed heap, which can carry raw control bytes - strip them so the
+  // rest still parses (that field isn't used)
+  const j = JSON.parse((await res.text()).replace(/[\u0000-\u001f]/g, ' '));
+  if (!res.ok || !j.taps || !j.taps[0] || !j.taps[0].readings) throw new Error(j.error || ('HTTP ' + res.status));
+  return j.taps[0];
+}
+
+// A temperature difference in the display unit (hvT converts absolutes)
+function _suDeltaT(c) { return hvTempUnit() === 'F' ? (c * 9 / 5).toFixed(1) + '°F' : c.toFixed(1) + '°C'; }
+
+// Line balance card: what the style wants, how this setup differs, the pour
+// it gives and what to change. Judged as it stands; with no pressure reading
+// (no sensor, or the gas isn't on yet) the pour is judged a second time with
+// the regulator at the right setting, which becomes the first fix.
+async function _suLineCard(ln, style, live) {
+  const lr = (live && live.readings) || {};
+  // Zero during setup is usually gas not connected yet, not a fault to report
+  const psiLive = (lr.psiStatus === 'ok' && hvNum(lr.psi) && lr.psi > 0.5) ? lr.psi : null;
+  const inputs = { psiStatus: psiLive != null ? 'ok' : 'not_read', lineLengthMm: ln.lineLength,
+                   tapHeightMm: ln.tapHeight || 0, lineId: ln.lineID || '3/16"', setupDone: true };
+  if (style) inputs.style = style;
+  if (psiLive != null) inputs.psi = psiLive;
+  if (hvNum(lr.fridgeTemp)) inputs.fridgeC = lr.fridgeTemp;
+
+  const asIs = await _suSimulate(inputs);
+  const r = asIs.readings, L = asIs.line || {};
+  const hasTemp = hvNum(r.beerTemp);
+  const tempOk = hasTemp && r.beerTemp >= r.tempMin && r.beerTemp <= r.tempMax;
+  // The regulator setting: the style's carbonation at this temperature while
+  // the beer is in its range, else the style setting - an out-of-range
+  // temperature gets its own fix, and its figure is never one to dial in
+  const psiSet = (tempOk && hvNum(r.psiNeeded)) ? r.psiNeeded : r.psiTarget;
+  const pourTap = (psiLive != null) ? asIs : await _suSimulate(Object.assign({}, inputs, { psiStatus: 'ok', psi: psiSet }));
+  // Name the style as picked, not the firmware's Lager fallback
+  const named = style || 'most beers';
+  pourTap.name = _su.name;
+  pourTap.readings.style = style || 'this beer';
+  const ctx = hvCtx(pourTap, null);
+  // One figure for the line everywhere on this card: with the rise included
+  if (pourTap.line && hvNum(pourTap.line.needed)) ctx.lineRes = hvP(pourTap.line.needed);
+  // The wizard's own value: the simulator's line.lineId is unreliable (see
+  // HealthService::simulate)
+  const id = lineIdText(ln.lineID || '3/16"');
+  const esc = _sheetEsc;
+  const p = function(t){ return '<p>' + esc(t) + '</p>'; };
+  const sec = function(cap, inner){ return '<div class="su-sec"><div class="su-sec-cap">' + esc(cap) + '</div>' + inner + '</div>'; };
+  const rise = L.riseLen > 0 ? ' with a ' + hvLen(L.riseLen) + ' rise' : '';
+
+  // 1. What the style wants
+  const ideal = p('Served at ' + hvT(r.tempMin, 0) + '–' + hvT(r.tempMax, 0) + ' and carbonated to '
+                  + r.volsTarget.toFixed(1) + ' volumes of CO2.')
+    + p('Regulator: about ' + hvP(psiSet) + (hasTemp && psiSet !== r.psiTarget ? ' at ' + hvT(r.beerTemp) : '')
+        + ' (range ' + hvP(r.psiMin, 0) + '–' + hvP(r.psiMax, 0) + ').')
+    + (L.lenNeeded >= 0.3
+        ? p('Line: about ' + hvLen(L.lenNeeded) + ' of ' + id + rise + ', so it holds back the ' + hvP(r.psiTarget, 0)
+            + ' pushing the beer and it reaches the glass gently.')
+        : '');
+
+  // 2. This setup against that
+  const diff = L.needed - r.psiTarget;
+  let lineTxt = 'Line: ' + hvLen(L.lineLen) + ' of ' + id + rise + ' holds back about ' + hvP(L.needed) + '. ';
+  if (L.status === 'balanced') lineTxt += 'That’s right for ' + named + '.';
+  else lineTxt += hvP(Math.abs(diff)) + (diff < 0 ? ' too little' : ' too much')
+                + (L.lenNeeded >= 0.3 ? ', about ' + hvLen(Math.abs(L.lenNeeded - L.lineLen)) + ' too ' + (diff < 0 ? 'short.' : 'long.') : '.');
+  let regTxt;
+  if (psiLive == null) {
+    regTxt = (lr.psiStatus === 'ok' && hvNum(lr.psi)) ? 'Regulator: no gas pressure yet.' : 'Regulator: no pressure reading yet.';
+  } else if (psiLive > r.psiMax) {
+    regTxt = 'Regulator: reads ' + hvP(psiLive) + ', ' + hvP(psiLive - r.psiMax) + ' above the range for ' + named + '.';
+  } else if (psiLive < r.psiMin) {
+    regTxt = 'Regulator: reads ' + hvP(psiLive) + ', ' + hvP(r.psiMin - psiLive) + ' below the range for ' + named + '.';
+  } else {
+    regTxt = 'Regulator: reads ' + hvP(psiLive) + ', within the range.';
+  }
+  let tempTxt;
+  if (!hasTemp) tempTxt = 'Temperature: no reading yet.';
+  else if (r.beerTemp > r.tempMax) tempTxt = 'Fridge: ' + hvT(r.beerTemp) + ', ' + _suDeltaT(r.beerTemp - r.tempMax) + ' warmer than ' + named + ' likes.';
+  else if (r.beerTemp < r.tempMin) tempTxt = 'Fridge: ' + hvT(r.beerTemp) + ', ' + _suDeltaT(r.tempMin - r.beerTemp) + ' colder than ideal.';
+  else tempTxt = 'Fridge: ' + hvT(r.beerTemp) + ', in range.';
+  const yours = p(lineTxt) + p(regTxt) + p(tempTxt);
+
+  // Short view of the same three checks: one line each, what's off and by
+  // how much. 'na' = no reading yet. Same figures as above - no new judging.
+  const hasDiag = function(id){ return (asIs.diagnoses || []).some(function(d){ return d.id === id; }); };
+  const checks = [];
+  if (L.status === 'balanced') checks.push(['ok', 'Line balanced for ' + named]);
+  else if (L.lenNeeded >= 0.3) checks.push(['bad', 'Line ' + hvLen(Math.abs(L.lenNeeded - L.lineLen)) + ' too ' + (diff < 0 ? 'short' : 'long')]);
+  else checks.push(['bad', 'Line holds back ' + hvP(Math.abs(diff)) + (diff < 0 ? ' too little' : ' too much')]);
+  if (psiLive == null) {
+    checks.push(['na', (lr.psiStatus === 'ok' && hvNum(lr.psi)) ? 'Regulator: no gas pressure yet' : 'Regulator: no reading yet']);
+  } else if (psiLive > r.psiMax || psiLive < r.psiMin || hasDiag('psi_wrong')) {
+    checks.push(['bad', 'Regulator ' + hvP(psiLive) + ', needs ' + hvP(psiSet)]);
+  } else {
+    checks.push(['ok', 'Regulator ' + hvP(psiLive) + ', in range']);
+  }
+  if (!hasTemp) checks.push(['na', 'Fridge: no reading yet']);
+  else if (r.beerTemp > r.tempMax) checks.push(['bad', 'Fridge ' + hvT(r.beerTemp) + ', ' + _suDeltaT(r.beerTemp - r.tempMax) + ' too warm']);
+  else if (r.beerTemp < r.tempMin) checks.push(['bad', 'Fridge ' + hvT(r.beerTemp) + ', ' + _suDeltaT(r.tempMin - r.beerTemp) + ' too cold']);
+  else checks.push(['ok', 'Fridge ' + hvT(r.beerTemp) + ', in range']);
+  const MARK = { ok: '✓', bad: '✕', na: '–' };
+
+  // 3. The pour it gives
+  const pt = POUR_TEXT[pourTap.pour] || POUR_TEXT.good;
+  const pr = pourTap.readings;
+  const pWarm = hvNum(pr.beerTemp) && pr.beerTemp > pr.tempMax;
+  let body = hvFill((pourTap.pour === 'mostly_foam' && !pWarm && pt.bodyHigh) ? pt.bodyHigh : pt.body, ctx);
+  // The "good" text quotes temperature and volumes; without a temperature it would read "--"
+  if (pourTap.pour === 'good' && !hasTemp) body = 'Steady pours with a head that holds, once the beer is properly cold.';
+  const headTxt = (psiLive == null ? 'With the regulator at ' + hvP(psiSet) + ': ' : '') + hvFill(pt.head, ctx);
+  const outcome = '<p>' + (psiLive == null ? esc('With the regulator at ' + hvP(psiSet) + ': ') : '')
+    + '<b>' + esc(hvFill(pt.head, ctx)) + '</b></p>' + p(body);
+
+  // 4. What to change, in the firmware's priority order. Each fix is
+  // [long, short]: the short view gives the action only, the long adds why.
+  const fixes = [];
+  if (psiLive == null) fixes.push(['Set the regulator to ' + hvP(psiSet) + '.', 'Set the regulator to ' + hvP(psiSet)]);
+  const pl = pourTap.line || L;
+  let changes = 0;
+  (pourTap.diagnoses || []).forEach(function(d){
+    if (d.id === 'line_imbalance' && pl.lenNeeded >= 0.3) {
+      changes++;
+      if (d.dir > 0) fixes.push(['Cut the line back to about ' + hvLen(pl.lenNeeded) + '. Turning the gas up to push beer through a long line over-carbonates it within a few days.',
+                                 'Cut the line back to about ' + hvLen(pl.lenNeeded)]);
+      else fixes.push(['Fit about ' + hvLen(pl.lenNeeded) + ' of ' + id + ' line in place of the ' + hvLen(pl.lineLen) + ' you have. Turning the gas down instead stops the foam, but the beer goes flat within a few days.',
+                       'Fit about ' + hvLen(pl.lenNeeded) + ' of ' + id + ' line']);
+      return;
+    }
+    // An assumed regulator setting can't be "wrong"; no gas is covered above
+    if (psiLive == null && (d.id === 'psi_wrong' || d.id === 'coupler_off')) return;
+    if (['line_imbalance', 'psi_wrong', 'coupler_off', 'fridge_warm', 'too_cold', 'freeze_risk'].indexOf(d.id) < 0) return;
+    const t = hvDiagText(pourTap, d);
+    changes++;
+    // Short: the first step is the action for every one of these except
+    // fridge_warm, whose list opens with a check (door seals)
+    const shortFix = (d.id === 'fridge_warm')
+      ? 'Turn the fridge down to below ' + hvT(r.tempMax, 0)
+      : String(t.steps[0] || t.title).replace(/\.\s*$/, '');
+    fixes.push([t.title + ': ' + t.steps.join(' '), shortFix]);
+  });
+  const tip = POUR_TIPS[pr.family] || '';
+  const fixList = function(k){
+    return fixes.length
+      ? '<ol>' + fixes.map(function(f){ return '<li>' + esc(f[k]) + '</li>'; }).join('') + '</ol>'
+      : p('Nothing to change.' + (tip ? ' ' + tip : ''));
+  };
+
+  const kind = pt.kind === 'bad' ? 'bad' : (pt.kind === 'ok' && changes === 0 ? 'ok' : 'warn');
+  const short = '<p class="su-lc-head">' + esc(headTxt) + '</p>'
+    + '<ul class="su-lc-checks">' + checks.map(function(c){ return '<li class="' + c[0] + '"><i>' + MARK[c[0]] + '</i><span>' + esc(c[1]) + '</span></li>'; }).join('') + '</ul>'
+    + '<div class="su-sec-cap">To fix</div>' + fixList(1);
+  const long = sec('Ideal for ' + named, ideal)
+    + sec('Your setup', yours)
+    + sec('If you pour as it is', outcome)
+    + sec('To fix', fixList(0));
+  const CHEV = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5 4.5 6 8 9.5 4.5"/></svg>';
+  return '<div class="su-card su-lc ' + kind + '"><h4><span class="dot"></span>' + esc('Line balance for ' + named) + '</h4>'
+    + '<div class="su-lc-short">' + short + '</div>'
+    + '<div class="su-lc-long">' + long + '</div>'
+    + (style ? '' : p('No beer style was chosen, so this is for a typical beer. Set one in this tap’s settings for advice tuned to what’s pouring.'))
+    + '<button type="button" class="su-lc-toggle su-lc-short" onclick="_suLineToggle(this, true)">More detail' + CHEV + '</button>'
+    + '<button type="button" class="su-lc-toggle su-lc-long" onclick="_suLineToggle(this, false)">Summarise' + CHEV.replace('2.5 4.5 6 8 9.5 4.5', '2.5 7.5 6 4 9.5 7.5') + '</button>'
+    + '</div>';
+}
+
+// Line card's More detail / Summarise. Display only - nothing is re-fetched.
+// Summarise scrolls the card's title back into view so the user isn't left
+// part-way down the next card.
+function _suLineToggle(btn, more) {
+  const cardEl = btn.closest('.su-lc');
+  if (!cardEl) return;
+  cardEl.classList.toggle('more', more);
+  if (!more) { try { cardEl.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) { cardEl.scrollIntoView(); } }
 }
 
 // Master only, phone/tablet only: save the dashboard to the home screen.
