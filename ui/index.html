@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.12 -->
+<!-- tapstr-ui-version: 1.22.13 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4142,7 +4142,13 @@ main {
 .su-chip { font: inherit; font-size: 13px; font-weight: 600; border-radius: var(--r-pill); padding: 7px 12px; cursor: pointer;
   background: var(--surface); border: 1px solid var(--line-2); color: var(--ink-2); }
 .su-chip.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-.su-diagram { display: block; width: 100%; max-width: 300px; height: auto; max-height: 17vh; margin: 0 auto 14px; color: var(--ink-3); }
+.su-diagram { display: block; width: 100%; max-width: 300px; height: auto; max-height: 17vh; margin: 0 auto 14px; color: var(--ink-3);
+  --tap-ill-outline: var(--ink-3); --tap-ill-line: var(--accent); --tap-ill-guide: var(--ink-4); }
+/* The line-setup drawing's own classes (LINE_SETUP_SVG's .o / .l / .g) */
+.su-ill-o { stroke: var(--tap-ill-outline, #A1A1AA); stroke-width: 3; }
+.su-ill-l { stroke: var(--tap-ill-line, #F5B82E); stroke-width: 3.5; }
+.su-ill-g { stroke: var(--tap-ill-guide, #52525B); stroke-width: 2; stroke-dasharray: 6 7; }
+.su-ill-t { fill: var(--ink-3); stroke: none; font-size: 19px; font-family: inherit; }
 .su-foot { flex: none; display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
 .su-foot:empty { display: none; }
 .su-btn { font: inherit; font-size: 16px; font-weight: 600; border-radius: 14px; padding: 15px 0; cursor: pointer; border: 1px solid transparent; width: 100%; }
@@ -13591,16 +13597,26 @@ const _su = { tap: 0, name: '', mode: 'full', a: {}, hist: [], step: null, prefs
 const _SU_ICON_BACK  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>';
 const _SU_ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
 
-// Tap height = vertical rise from the keg's top to the faucet.
+// Tap height = vertical rise from the keg's top to the faucet. Same drawing
+// as the firmware's LINE_SETUP_SVG (line_setup_svg.h), plus the two labels.
+// Its <style> block lives in the page CSS as .su-ill-* - an inline SVG's
+// <style> is global, and bare .o / .l / .g would hit the whole dashboard.
 const _SU_LINE_DIAGRAM =
-  '<svg class="su-diagram" viewBox="0 0 300 168" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<rect x="30" y="80" width="60" height="62" rx="8"/><line x1="30" y1="96" x2="90" y2="96"/><line x1="30" y1="126" x2="90" y2="126"/>' +
-    '<path d="M60 80 V66 C60 40 120 120 170 70 S 220 24 236 24" stroke="var(--accent)" stroke-dasharray="5 5"/>' +
-    '<path d="M236 18 h22 v14 h-10 v16"/>' +
-    '<line x1="280" y1="24" x2="280" y2="80" stroke="var(--ink-2)"/><polyline points="275,30 280,24 285,30" stroke="var(--ink-2)"/><polyline points="275,74 280,80 285,74" stroke="var(--ink-2)"/>' +
-    '<line x1="96" y1="80" x2="286" y2="80" stroke-dasharray="2 4"/>' +
-    '<text x="150" y="162" fill="currentColor" stroke="none" font-size="12" text-anchor="middle">line length = full run of beer line</text>' +
-    '<text x="272" y="56" fill="currentColor" stroke="none" font-size="12" text-anchor="end">tap height</text>' +
+  '<svg class="su-diagram" viewBox="0 0 480 320" fill="none" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Keg connected to a tap by a beer line, with tap height measured above the keg">' +
+    '<g class="su-ill-g"><path d="M148 170H452"/></g>' +
+    '<g class="su-ill-l"><path d="M96 152C100 138 118 136 146 143C178 151 196 166 222 166C262 166 290 145 318 118C340 97 352 82 370 80"/></g>' +
+    '<g class="su-ill-o">' +
+      '<path d="M49 177A47 8 0 0 0 143 177M49 177A47 8 0 0 1 84 169.6M108 169.6A47 8 0 0 1 143 177"/>' +
+      '<path d="M49 177V275M143 177V275M49 195A47 8 0 0 0 143 195M49 216A47 8 0 0 0 143 216M49 247A47 8 0 0 0 143 247M49 267A47 8 0 0 0 143 267M49 275A47 8 0 0 0 143 275"/>' +
+      '<path d="M90 152H102V159H90ZM84 159H108V171H84Z"/>' +
+    '</g>' +
+    '<g class="su-ill-o">' +
+      '<path d="M381 39H391L389 66H383Z"/><path d="M383 66H389V74H383Z"/><path d="M370 75H404V87H370Z"/>' +
+      '<path d="M404 73H408V93H404Z"/><path d="M392 87V109H399V90"/>' +
+    '</g>' +
+    '<g class="su-ill-o"><path d="M440 82V166M432 90L440 82L448 90M432 158L440 166L448 158"/></g>' +
+    '<text class="su-ill-t" x="428" y="150" text-anchor="end">Tap height</text>' +
+    '<text class="su-ill-t" x="240" y="310" text-anchor="middle">Line length = full run of beer line</text>' +
   '</svg>';
 
 function _suEl() {
