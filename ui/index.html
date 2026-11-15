@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.17 -->
+<!-- tapstr-ui-version: 1.22.18 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13820,16 +13820,8 @@ function _suRenderStep() {
       foot: '<button type="button" class="su-btn primary" id="suGo">' + (done ? 'Run setup again' : 'Start') + '</button>'
           + '<button type="button" class="su-btn link" id="suLater">' + (done ? 'Back to dashboard' : 'Do this later') + '</button>' });
     wrap.querySelector('#suGo').onclick = function(){ _suEnterFullscreen(); _suNext(); };
-    wrap.querySelector('#suLater').onclick = function(){
-      // Not set up yet: take the tap's own screen off its Finish Setup QR too
-      // (same as its Skip button). Old firmware ignores the unknown command.
-      if (!done) {
-        fetch('/api/devices/' + _su.tap + '/command', { method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'setup_later' }) }).catch(function(){});
-      }
-      _suClose();
-    };
+    // _suClose() takes the tap's screen off its Finish Setup QR if needed.
+    wrap.querySelector('#suLater').onclick = function(){ _suClose(); };
     break;
   }
 
@@ -14463,6 +14455,16 @@ function _suHomescreen() {
 // Leave the wizard (finished or "do this later") and refresh the dashboard
 // underneath so the setup tip / line card reflect what was saved.
 function _suClose() {
+  // Any way out before the tap is set up ("Do this later", the X / "Finish
+  // later" button, "Go to dashboard"): take the tap's own screen off its Finish
+  // Setup QR too, as its Skip button does. Only "Do this later" used to send
+  // this, so leaving by the X left a new slave showing "finish on your phone".
+  // Idempotent on the device (acts only on that screen); old firmware ignores it.
+  if (_su.step && !_suDeviceSetupDone()) {
+    fetch('/api/devices/' + _su.tap + '/command', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'setup_later' }) }).catch(function(){});
+  }
   _su.step = null;
   window._onSheetClosed = null;
   _suExitFullscreen();
