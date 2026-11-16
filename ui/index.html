@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.18 -->
+<!-- tapstr-ui-version: 1.22.19 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5070,8 +5070,7 @@ async function pollUploadStatus(deviceIndex = 0, deviceId = null, baseUrl = '') 
             }
 
             if (data.status === 'error') {
-                // Single-blank firmware: the device aborted the upload pair
-                // (webp missing/failed) and deleted the orphaned bin.
+                // The device could not save the upload and kept nothing.
                 console.warn('Device reported upload error:', data.message || '');
                 return -1;
             }
@@ -6717,7 +6716,7 @@ const BadgeFinder = (() => {
     if (s) s.classList.remove('bp-cropping', 'bp-metastep');
     if (window.galleryUploadCropper) window.galleryUploadCropper = null;
     modalState.bpPendingCanvas = null;
-    modalState.bpPendingWebpPromise = null;
+    modalState.bpPendingBlobPromise = null;
     st.pick = null; st.fromSearch = false;
     show();
   }
@@ -9058,43 +9057,41 @@ function uploadImageFromGallery() {
     
     console.log('Got cropped canvas:', canvas.width, 'x', canvas.height);
 
-    // Generate the companion thumbnail BEFORE sending anything and gate on its
-    // size - a companion over cap orphans a slot (bin written, companion
-    // rejected). We encode JPEG: it's the one raster format canvas.toBlob
-    // honours with a quality factor on EVERY browser, including iOS Safari.
-    // (Safari silently ignores 'image/webp' and falls back to a ~400KB PNG -
-    // that was the cross-browser bug. JPEG q0.85 is ~50KB and works everywhere.)
-    // Stored device-side as a format-neutral .thumb file; the device sniffs the
-    // bytes and serves the right Content-Type, so the gallery renders on any browser.
-    const THUMB_MAX_BYTES = 200000; // 200KB gate. Headroom math: ~344KB/companion is the physical
-                                    // ceiling with all 5 slots full; 200KB keeps 800KB+ free. JPEG
-                                    // q0.85 lands a busy photo ~55KB, a logo far less - this is a
+    // Encode the one JPEG that gets uploaded BEFORE sending anything, and gate
+    // on its size. The device decodes it for the screen and keeps it as the
+    // gallery companion (.thumb), so this is the only image sent. JPEG because
+    // it's the one raster format canvas.toBlob honours with a quality factor on
+    // EVERY browser, including iOS Safari (which silently turns 'image/webp'
+    // into a ~400KB PNG). The device sniffs the bytes for Content-Type.
+    const THUMB_MAX_BYTES = 200000; // 200KB gate, matched by the device (BADGE_JPEG_MAX). ~344KB is the
+                                    // physical ceiling with all 5 slots full; 200KB keeps 800KB+ free.
+                                    // q0.88 lands a busy photo ~60KB, a logo far less - this is a
                                     // generous backstop, not a routine limit.
-    let webpBlobPromise = new Promise(resolve => {
-        canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
+    let badgeBlobPromise = new Promise(resolve => {
+        canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.88);
     });
 
-    webpBlobPromise.then((webpBlob) => {
-        if (!webpBlob) {
+    badgeBlobPromise.then((jpegBlob) => {
+        if (!jpegBlob) {
             showCropError('Could not process that image. Try a different one.');
             return;
         }
-        console.log('Companion size check:', webpBlob.size, 'type:', webpBlob.type, 'cap:', THUMB_MAX_BYTES);
-        if (webpBlob.size > THUMB_MAX_BYTES) {
-            const kb = Math.round(webpBlob.size / 1024);
+        console.log('Badge JPEG size check:', jpegBlob.size, 'type:', jpegBlob.type, 'cap:', THUMB_MAX_BYTES);
+        if (jpegBlob.size > THUMB_MAX_BYTES) {
+            const kb = Math.round(jpegBlob.size / 1024);
             showCropError('Image too large (' + kb + 'KB, max ' + Math.round(THUMB_MAX_BYTES/1024) + 'KB). Tap badges work best with a clean logo or graphic - solid colours and simple shapes compress small. A busy photo carries too much fine detail. Try a logo image rather than a photo.');
-            return; // nothing sent - no bin, no webp, no orphan
+            return; // nothing sent
         }
         hideCropError();
-        // Stash the validated crop + webp, then advance to the metadata step
+        // Stash the validated crop + JPEG, then advance to the metadata step
         // (beer name + style). The actual upload fires from bpMetaCommit once
         // the user fills those in - badge = keg, so we capture what's pouring
         // at the moment the badge is set.
         modalState.bpPendingCanvas = canvas;
-        modalState.bpPendingWebpPromise = webpBlobPromise;
+        modalState.bpPendingBlobPromise = badgeBlobPromise;
         bpShowMetaStep();
     }).catch((e) => {
-        console.error('WebP encode failed:', e);
+        console.error("Badge JPEG encode failed:", e);
         showCropError('Could not process that image. Try a different one.');
     });
 }
@@ -9157,16 +9154,16 @@ function bpMetaBack() {
 }
 
 // Commit: capture name+style, then run the real upload. The metadata POSTs to
-// the device just before the bin so it's staged for the in-hold manifest write.
+// the device just before the image so it's staged for the manifest write.
 function bpMetaCommit() {
     const name = (document.getElementById('bpMetaName').value || '').trim();
     const style = document.getElementById('bpMetaStyle').value || '';
     if (!name || !style) { bpMetaValidate(); return; }
     const canvas = modalState.bpPendingCanvas;
-    const webpPromise = modalState.bpPendingWebpPromise;
-    if (!canvas || !webpPromise) { closeGalleryUploadModal(); return; }
+    const blobPromise = modalState.bpPendingBlobPromise;
+    if (!canvas || !blobPromise) { closeGalleryUploadModal(); return; }
     modalState.bpPendingMeta = { name: name, style: style };
-    proceedWithBadgeUpload(canvas, webpPromise);
+    proceedWithBadgeUpload(canvas, blobPromise);
 }
 
 function showCropError(msg) {
@@ -9186,8 +9183,8 @@ function hideCropError() {
 // real device event releases it into the next band - early events jump it
 // forward, late events park it just short. Bands:
 //   0-8%   preflight (slave only: quiesce + probe)
-//   8-72%  image upload + bin write (the long blank - owns most of the bar)
-//   72-100% thumbnail (webp) + manifest
+//   8-92%  image upload + device write (badge, thumbnail, manifest)
+//   92-100% confirmed by the status poll
 // =============================================================================
 const _bpProg = {
   raf: null, pctRaf: null, HOLD: 3,
@@ -9241,12 +9238,11 @@ const _bpProg = {
     if (sub) sub.textContent = isSlave ? 'Preparing device\u2026' : 'Saving to device\u2026';
     this._syncPct();
     // Slave: open the small preflight band immediately so motion starts at once.
-    // Master: open straight into the bin band.
+    // Master: open straight into the save band.
     if (isSlave) this._ease(8, 1100);
-    else this._ease(72, 3600);
+    else this._ease(92, 3600);
   },
-  preflightDone(){ this._release(8); this._setSub('Saving to device\u2026'); this._ease(72, 4200); },
-  binConfirmed(){ this._release(72); this._setSub('Saving thumbnail\u2026'); this._ease(100, 1200); },
+  preflightDone(){ this._release(8); this._setSub('Saving to device\u2026'); this._ease(92, 4200); },
   applying(){ this._release(100); this._setSub('Applying changes\u2026'); },
   complete(beerName){
     cancelAnimationFrame(this.raf);
@@ -9277,8 +9273,8 @@ const _bpProg = {
   _setSub(t){ const s = this.el('bpProgSub'); if (s) s.textContent = t; }
 };
 
-// Actual upload - only reached once the webp is confirmed under cap.
-function proceedWithBadgeUpload(canvas, webpBlobPromise) {
+// Actual upload - only reached once the JPEG is confirmed under cap.
+function proceedWithBadgeUpload(canvas, blobPromise) {
     // Capture the metadata NOW, before closeGalleryUploadModal() (called below)
     // runs bpExitCrop and nulls modalState.bpPendingMeta. The meta POST fires
     // later in an async chain, by which point the stash is gone - read it here
@@ -9288,13 +9284,13 @@ function proceedWithBadgeUpload(canvas, webpBlobPromise) {
     // is visible while it works.
     let previewUrl = '';
     try { previewUrl = canvas.toDataURL('image/png'); } catch (_) {}
-    canvas.toBlob((blob) => {
+    blobPromise.then((blob) => {
         if (!blob) {
             alert('Failed to convert image. Please try again.');
             return;
         }
         
-        console.log('Got cropped blob, size:', blob.size);
+        console.log('Badge JPEG, size:', blob.size);
 
         const isMaster = modalState.bpIsMaster;
         const slaveId = modalState.deviceId;
@@ -9316,8 +9312,8 @@ function proceedWithBadgeUpload(canvas, webpBlobPromise) {
         //
         // Slave uploads go BROWSER-DIRECT to the slave's own /upload, mirroring
         // the gallery's 302 architecture: the slave runs identical firmware, so
-        // the whole master flow (deferred write, single-blank hold, status poll,
-        // webp pair, abort) works verbatim against its IP. The old master
+        // the whole master flow (deferred write, status poll) works verbatim
+        // against its IP. The old master
         // forward path (/api/slave-upload) could never report the real slot -
         // the slave's deferred write completes after the forward returns.
         let apiUrl;
@@ -9354,7 +9350,7 @@ function proceedWithBadgeUpload(canvas, webpBlobPromise) {
         //    Non-fatal if it fails (older master firmware) - just log.
         // 2. Probe: one cheap GET to the slave before any bytes move, so an
         //    unreachable/offline slave fails in ~4s with a clean error -
-        //    before anything uploads and before the slave's screen blanks.
+        //    before anything uploads.
         let preflight = Promise.resolve();
         if (!isMaster) {
             const quiesce = fetch(`/api/slave-quiesce/${slaveId}`, { method: 'POST' })
@@ -9401,51 +9397,27 @@ function proceedWithBadgeUpload(canvas, webpBlobPromise) {
                 throw new Error(`Upload failed with status ${response.status}`);
             }
 
-            // Image received by the device; the bin write is now underway under
-            // the blank. The progress bar is already easing through the bin band
-            // (opened in _bpProg.begin); the bin-confirmed poll below releases it.
-            
-            // Poll for completion - returns slot once write confirmed. Both
-            // master ('' base = relative URLs) and slave (direct base) hit the
-            // device's own /api/upload-status: the device that performed the
-            // write is the authority on its outcome.
+            // Image received by the device; it decodes it and writes the badge,
+            // its thumbnail and the manifest in one pass, with a progress card
+            // on its own screen. The bar here is easing through the save band
+            // (opened in _bpProg.begin).
+            //
+            // Poll for completion - returns slot once the write is confirmed.
+            // Both master ('' base = relative URLs) and slave (direct base) hit
+            // the device's own /api/upload-status: the device that performed
+            // the write is the authority on its outcome.
             return pollUploadStatus(0, null, slaveBase);
-            
-        }).then(async (slot) => {
-            // Bin write confirmed by the target device itself. Single-blank
-            // firmware deletes the bin if its webp doesn't follow, so webp
-            // failures are FATAL to the upload - they throw to the outer catch
-            // instead of the old non-critical warn.
-            if (slot === -1) throw new Error('the device aborted the upload - please retry');
+
+        }).then((slot) => {
+            if (slot === -1) throw new Error('the device could not save the badge - please retry');
             if (!slot) throw new Error('could not confirm the upload on the device - please retry');
             assignedSlot = slot;
             console.log('Upload confirmed, slot:', assignedSlot, slaveBase || '(master)');
-            _bpProg.binConfirmed(); // release bin band -> thumbnail band
-            {
-                // One flow for master and slave - same firmware, same endpoints,
-                // only the base URL differs.
-                const webpBlob = await webpBlobPromise;
-                if (!webpBlob) throw new Error('badge thumbnail could not be created - upload abandoned');
-                console.log('Uploading WebP companion, slot:', assignedSlot, 'size:', webpBlob.size);
-                const webpForm = new FormData();
-                webpForm.append('file', webpBlob, 'badge.thumb');
-                const webpResponse = await fetch(slaveBase + `/upload-webp?slot=${assignedSlot}`, {
-                    method: 'POST',
-                    body: webpForm
-                });
-                if (!webpResponse.ok) throw new Error('badge thumbnail upload failed (' + webpResponse.status + ')');
-                // The webp write is deferred on-device - confirm it actually
-                // landed. 'error' means the device aborted and removed the badge.
-                const confirmSlot = await pollUploadStatus(0, null, slaveBase);
-                if (confirmSlot === -1) throw new Error('upload incomplete - the device removed the badge, please retry');
-                console.log('WebP companion saved for slot', assignedSlot);
-                _bpProg.applying(); // 100% + "Applying changes"
-                // The device set this badge active at unblank - mirror that on
-                // the dashboard card immediately (replaces what the removed
-                // set-background call used to do via _badgeCacheUpdate).
-                try { _badgeCacheUpdate(modalState.deviceId, isMaster, '/TapBadge_' + assignedSlot + '.bin', badgeMeta); } catch (_) {}
+            _bpProg.applying(); // 100% + "Applying changes"
+            // The device made this badge active - mirror that on the dashboard
+            // card immediately.
+            try { _badgeCacheUpdate(modalState.deviceId, isMaster, '/TapBadge_' + assignedSlot + '.bin', badgeMeta); } catch (_) {}
             modalState.bpUploaded = true;   // closeModal offers "Tap a new keg?"
-            }
 
             // Processing complete - show the done state in-sheet, then close.
             console.log('Upload processing complete');
@@ -9455,8 +9427,8 @@ function proceedWithBadgeUpload(canvas, webpBlobPromise) {
         }).catch(error => {
             clearTimeout(timeoutId);
             console.error('Upload failed:', error);
-            // Freeze the bar red in-sheet, then close. Covers abort (device
-            // removed the half-pair), timeout, and network errors alike.
+            // Freeze the bar red in-sheet, then close. Covers a failed save on
+            // the device, timeout, and network errors alike.
             const msg = (error && error.name === 'AbortError')
                 ? 'Timed out - the device may be busy. Please retry.'
                 : (error && error.message ? error.message : 'Please check your connection and retry.');
@@ -9464,7 +9436,7 @@ function proceedWithBadgeUpload(canvas, webpBlobPromise) {
             setTimeout(() => { _bpProg.end(); closeModal(); }, 2400);
         });
 
-    }, 'image/jpeg', 0.9);
+    });
 }
 
 
@@ -12995,7 +12967,7 @@ function bpExitCrop() {
   if (sheet) { sheet.classList.remove('bp-cropping'); sheet.classList.remove('bp-metastep'); }
   if (window.galleryUploadCropper) window.galleryUploadCropper = null;
   modalState.bpPendingCanvas = null;
-  modalState.bpPendingWebpPromise = null;
+  modalState.bpPendingBlobPromise = null;
   modalState.bpPendingMeta = null;
   const fi = document.getElementById('gallery-file-input');
   if (fi) fi.value = '';
