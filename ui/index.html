@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.23 -->
+<!-- tapstr-ui-version: 1.22.24 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7347,10 +7347,18 @@ function calculateLineBalance(lineLengthMM, tapHeightMM, lineID) {
         calculatedPSI: calculatedPSI.toFixed(1), hasLineConfig: lineLengthMM > 0 };
 }
 
+// toFixed() without "-0.0": a disconnected pressure sensor reads either side
+// of zero, and anything that rounds to zero shows unsigned. Same rule as the
+// device's Home screen (pressureForDisplay() in UIManager.cpp).
+function fixedNoNegZero(v, dp) {
+    const s = v.toFixed(dp);
+    return /^-0(\.0+)?$/.test(s) ? s.slice(1) : s;
+}
+
 // Helper to format pressure in user's preferred unit
 function formatPressureUnit(psi, unit) {
-    if (unit && unit.toUpperCase() === 'BAR') return (psi * 0.0689476).toFixed(2) + ' bar';
-    return psi.toFixed(1) + ' PSI';
+    if (unit && unit.toUpperCase() === 'BAR') return fixedNoNegZero(psi * 0.0689476, 2) + ' bar';
+    return fixedNoNegZero(psi, 1) + ' PSI';
 }
 
 // =============================================================================
@@ -7407,8 +7415,8 @@ function hvT(c, dp) {
 function hvTVal(c) { return hvTempUnit() === 'F' ? c * 9 / 5 + 32 : c; }        // for bar maths
 function hvP(psi, dp) {
   if (!hvNum(psi)) return '--';
-  if (hvPresUnit() === 'BAR') return (psi * 0.0689476).toFixed(2) + ' bar';
-  return psi.toFixed(dp == null ? 1 : dp) + ' PSI';
+  if (hvPresUnit() === 'BAR') return fixedNoNegZero(psi * 0.0689476, 2) + ' bar';
+  return fixedNoNegZero(psi, dp == null ? 1 : dp) + ' PSI';
 }
 function hvPVal(psi) { return hvPresUnit() === 'BAR' ? psi * 0.0689476 : psi; }
 function hvImperial() { return hvTempUnit() === 'F'; }
@@ -7964,7 +7972,7 @@ async function hvLoadSparks(tap, root) {
     const pts = pH.samples.filter(s => hvNum(s.v)).map(s => ({ t: s.t, v: hvPVal(s.v) }));
     const vals = pts.map(p => p.v).concat([hvPVal(r.psiMin), hvPVal(r.psiMax)]);
     fill(pEl, pts, Math.max(0, Math.min.apply(null, vals) - 1), Math.max.apply(null, vals) + 1,
-         hvPVal(r.psiMin), hvPVal(r.psiMax), d => hvPresUnit() === 'BAR' ? d.toFixed(2) + ' bar' : d.toFixed(1) + ' PSI');
+         hvPVal(r.psiMin), hvPVal(r.psiMax), d => hvPresUnit() === 'BAR' ? fixedNoNegZero(d, 2) + ' bar' : fixedNoNegZero(d, 1) + ' PSI');
   } else fill(pEl, null);
 }
 
@@ -10558,7 +10566,7 @@ function createTapCard(device, metrics, index, total) {
 
   const presCurrent = pres.current;
   const presUnit    = pres.unit || hvPresUnit();
-  const presDisplay = (presCurrent !== null && presCurrent !== undefined) ? presCurrent.toFixed(1) : '--';
+  const presDisplay = (presCurrent !== null && presCurrent !== undefined) ? fixedNoNegZero(presCurrent, 1) : '--';
 
   const daysTapped  = maint.daysSinceTapped  || 0;
   const daysCleaned = maint.daysSinceCleaned || 0;
@@ -11313,7 +11321,7 @@ function dtRenderDashboard() {
   };
   setMetric('dt-cleaned', 'dt-cleaned-status', meta.daysCleaned, meta.daysCleaned === 1 ? 'day ago' : 'days ago', cleanedStatus);
   setMetric('dt-tapped',  'dt-tapped-status',  meta.daysTapped,  meta.daysTapped  === 1 ? 'day ago' : 'days ago', tappedStatus);
-  const presVal = (meta.pressure != null) ? meta.pressure.toFixed(1) : '--';
+  const presVal = (meta.pressure != null) ? fixedNoNegZero(meta.pressure, 1) : '--';
   setMetric('dt-pressure', 'dt-pressure-status', presVal, meta.pressureUnit, pressureStatus);
   const lineTempStatus = hvTileStatus(meta.id, 'lineTemp');
   const lineTempVal = (meta.tempC !== null && meta.tempC !== undefined) ? meta.tempC.toFixed(1) : '--';
