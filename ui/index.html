@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.27 -->
+<!-- tapstr-ui-version: 1.22.28 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1701,6 +1701,11 @@ body.page-overlay-active .app-mobile .scroll-container {
   color: var(--accent-fg); font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; }
 .newtap-card .nt-btn.wide { width: 100%; }
 .newtap-card .nt-btn:disabled { opacity: .5; }
+/* The code row folds away once the code is sent; back for a retry. */
+.newtap-card .nt-fold { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .3s ease, opacity .25s ease; }
+.newtap-card .nt-fold > .nt-row { overflow: hidden; min-height: 0; }
+.newtap-card .nt-fold.used { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
+.newtap-card .nt-fold.used + .nt-msg { margin-top: 0; }
 .newtap-card .nt-msg { font-size: 13px; color: var(--ink-2); margin-top: 10px; min-height: 0; }
 .newtap-card .nt-msg.err { color: #ff8a80; }
 
@@ -10045,7 +10050,7 @@ async function runAdoptionScan(config) {
             showToast("Couldn't get a scan result from the primary tap", 'error', 6000);
         } else if (status.state === 'found') {
             if (window.newTapCard) window.newTapCard.show(status.ssid);
-            else showToast(`Found ${status.ssid}. Tap Adopt on the primary tap's screen, then enter the 2-digit code shown on the new tap.`, 'success', 10000);
+            else showToast(`Found a new Tapstr. Tap Adopt on the primary tap's screen, then enter the 2-digit code shown on the new tap.`, 'success', 10000);
         } else if (status.state === 'not_found') {
             showToast('No new taps found. Make sure the new tap is powered on and showing its setup code, then try again.', 'info', 8000);
         } else {
@@ -10088,17 +10093,35 @@ window.newTapCard = (function () {
           </div>
           <div class="nt-sub"></div>
           <div class="nt-row nt-app"><button class="nt-btn wide nt-scan">Scan the code on its screen</button></div>
-          <div class="nt-row nt-web">
-            <input class="nt-code" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="00" aria-label="Code on its screen">
-            <button class="nt-btn nt-add">Add</button>
-          </div>
+          <div class="nt-fold nt-web"><div class="nt-row">
+            <input class="nt-code" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="00"
+                   autocomplete="one-time-code" aria-label="Code on its screen">
+          </div></div>
           <div class="nt-msg"></div>`;
         document.body.appendChild(el);
         el.querySelector('.nt-close').onclick = () => { if (shownId) dismissed[shownId] = true; hide(true); };
         el.querySelector('.nt-scan').onclick = () => window.TapstrApp.postMessage('add');
-        el.querySelector('.nt-add').onclick = () => add();
-        el.querySelector('.nt-code').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+        // No Add button: the second digit sends it (Enter still works).
+        const codeEl = el.querySelector('.nt-code');
+        codeEl.addEventListener('input', () => {
+            const digits = codeEl.value.replace(/\D/g, '').slice(0, 2);
+            if (codeEl.value !== digits) codeEl.value = digits;
+            if (digits.length === 2) add();
+            else setMsg('');
+        });
+        codeEl.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
         return el;
+    }
+
+    // Folds the code row away once it's used; unfolds it, cleared and
+    // focused, for another go.
+    function setCodeUsed(used) {
+        const fold = el.querySelector('.nt-fold');
+        const codeEl = el.querySelector('.nt-code');
+        fold.classList.toggle('used', used);
+        codeEl.disabled = used;
+        if (used) codeEl.blur();
+        else { codeEl.value = ''; codeEl.focus(); }
     }
 
     function setMsg(text, err) {
@@ -10114,10 +10137,12 @@ window.newTapCard = (function () {
         if (shownId !== id) {
             shownId = id;
             el.querySelector('.nt-sub').textContent = inApp()
-                ? `tapstr${id} is switched on and ready to add.`
-                : `tapstr${id} is switched on. Enter the 2-digit code on its screen to add it.`;
+                ? 'A new Tapstr is switched on and ready to add.'
+                : 'A new Tapstr is switched on. Type the 2-digit code on its screen to add it.';
             el.querySelector('.nt-app').style.display = inApp() ? '' : 'none';
             el.querySelector('.nt-web').style.display = inApp() ? 'none' : '';
+            el.querySelector('.nt-fold').classList.remove('used');
+            el.querySelector('.nt-code').disabled = false;
             el.querySelector('.nt-code').value = '';
             setMsg('');
         }
@@ -10137,8 +10162,8 @@ window.newTapCard = (function () {
         const code = el.querySelector('.nt-code').value.trim();
         if (!/^[1-9][0-9]$/.test(code)) { setMsg('Enter the 2-digit code shown on the new tap.', true); return; }
         const id = shownId;
-        const btn = el.querySelector('.nt-add');
-        busy = true; btn.disabled = true;
+        busy = true;
+        setCodeUsed(true);
         setMsg('Adding the tap. Your Tapstr goes offline for about 30 seconds while it does this...');
         try {
             const r = await fetch('/api/adoption/adopt', {
@@ -10168,8 +10193,9 @@ window.newTapCard = (function () {
             throw new Error("Your Tapstr didn't report back. Refresh the page and check the tap list.");
         } catch (e) {
             setMsg(e.message, true);
+            setCodeUsed(false);   // back for another go
         } finally {
-            busy = false; btn.disabled = false;
+            busy = false;
         }
     }
 
