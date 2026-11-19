@@ -1,4 +1,4 @@
-<!-- tapstr-ui-version: 1.22.28 -->
+<!-- tapstr-ui-version: 1.22.29 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4135,6 +4135,9 @@ main {
 /* Fallback if a browser autofills anyway: keep the dark box instead of its white fill. */
 .su-input input:-webkit-autofill { -webkit-box-shadow: 0 0 0 100px var(--surface) inset; -webkit-text-fill-color: var(--ink); caret-color: var(--ink); }
 .su-input .u { font-size: 14px; color: var(--ink-3); margin-left: 8px; }
+/* "Add another tap?" (_suFinish): the new tap's 2-digit code */
+.su-input.su-code input { text-align: center; letter-spacing: .3em; font-size: 24px; }
+.su-field-hint.err { color: #ff8a80; }
 /* 16px+ so iOS doesn't zoom on focus */
 .su-select { font: inherit; font-size: 17px; font-weight: 600; color: var(--ink); width: 100%; box-sizing: border-box;
   background-color: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-md); padding: 12px 40px 12px 14px;
@@ -10130,9 +10133,18 @@ window.newTapCard = (function () {
         m.classList.toggle('err', !!err);
     }
 
+    // Set up is linear: while the setup wizard is open (or about to open on
+    // /setup) the card stays away; the wizard's last step offers the waiting
+    // tap itself (_suFinish), so there's no fork mid-setup.
+    const setupRunning = () => {
+        const w = document.getElementById('setupWizard');
+        return location.pathname === '/setup' || !!(w && w.classList.contains('active'));
+    };
+    const idOf = ssid => String(ssid || '').replace(/^tapstr/i, '').toUpperCase();
+
     function show(ssid) {
-        const id = String(ssid || '').replace(/^tapstr/i, '').toUpperCase();
-        if (!/^[0-9A-F]{4}$/.test(id) || dismissed[id]) return;
+        const id = idOf(ssid);
+        if (!/^[0-9A-F]{4}$/.test(id) || dismissed[id] || setupRunning()) return;
         build();
         if (shownId !== id) {
             shownId = id;
@@ -10149,6 +10161,9 @@ window.newTapCard = (function () {
         el.classList.add('show');
     }
 
+    // The wizard's "Not now": don't raise the card again for this tap.
+    function dismiss(ssid) { const id = idOf(ssid); if (id) dismissed[id] = true; }
+
     function hide(force) {
         if (busy && !force) return;
         if (el) el.classList.remove('show');
@@ -10164,33 +10179,8 @@ window.newTapCard = (function () {
         const id = shownId;
         busy = true;
         setCodeUsed(true);
-        setMsg('Adding the tap. Your Tapstr goes offline for about 30 seconds while it does this...');
         try {
-            const r = await fetch('/api/adoption/adopt', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, code: parseInt(code, 10) })
-            });
-            const j = await r.json().catch(() => ({}));
-            if (j.status !== 'accepted') throw new Error(j.reason || "Your Tapstr couldn't start adding the tap");
-            const deadline = Date.now() + 120000;
-            while (Date.now() < deadline) {
-                await sleep(2500);
-                let st;
-                try { st = await (await fetch('/api/adoption/status', { cache: 'no-store' })).json(); }
-                catch (_) { continue; }   // offline while it's on the new tap's network
-                if (st.seq !== j.seq) continue;
-                if (st.state === 'adopted') {
-                    setMsg('Tap added. Opening its setup...');
-                    await sleep(1500);
-                    location.href = st.mac ? '/setup?mac=' + encodeURIComponent(st.mac) : '/';
-                    return;
-                }
-                if (st.state === 'wrong_code') throw new Error("That code didn't match. Check the code on the new tap's screen and try again.");
-                if (st.state === 'not_found') throw new Error("Couldn't reach the new tap. Check it's switched on and near your Tapstr.");
-                if (st.state === 'failed') throw new Error('Adding the tap failed. Try again.');
-                if (st.state === 'refused') throw new Error(st.reason || "Your Tapstr couldn't add the tap.");
-            }
-            throw new Error("Your Tapstr didn't report back. Refresh the page and check the tap list.");
+            await adopt(id, code, setMsg);
         } catch (e) {
             setMsg(e.message, true);
             setCodeUsed(false);   // back for another go
@@ -10199,8 +10189,42 @@ window.newTapCard = (function () {
         }
     }
 
+    // Adds tap `id` (the 4 hex digits of tapstrXXXX) with its 2-digit code,
+    // reporting progress through say(text). On success it opens the new tap's
+    // setup and never resolves; on failure it throws an Error worded for the
+    // user. Shared by this card and the setup wizard's last step (_suFinish).
+    async function adopt(id, code, say) {
+        say('Adding the tap. Your Tapstr goes offline for about 30 seconds while it does this...');
+        const r = await fetch('/api/adoption/adopt', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, code: parseInt(code, 10) })
+        });
+        const j = await r.json().catch(() => ({}));
+        if (j.status !== 'accepted') throw new Error(j.reason || "Your Tapstr couldn't start adding the tap");
+        const deadline = Date.now() + 120000;
+        while (Date.now() < deadline) {
+            await sleep(2500);
+            let st;
+            try { st = await (await fetch('/api/adoption/status', { cache: 'no-store' })).json(); }
+            catch (_) { continue; }   // offline while it's on the new tap's network
+            if (st.seq !== j.seq) continue;
+            if (st.state === 'adopted') {
+                say('Tap added. Opening its setup...');
+                await sleep(1500);
+                location.href = st.mac ? '/setup?mac=' + encodeURIComponent(st.mac) : '/';
+                return new Promise(() => {});   // navigating away
+            }
+            if (st.state === 'wrong_code') throw new Error("That code didn't match. Check the code on the new tap's screen and try again.");
+            if (st.state === 'not_found') throw new Error("Couldn't reach the new tap. Check it's switched on and near your Tapstr.");
+            if (st.state === 'failed') throw new Error('Adding the tap failed. Try again.');
+            if (st.state === 'refused') throw new Error(st.reason || "Your Tapstr couldn't add the tap.");
+        }
+        throw new Error("Your Tapstr didn't report back. Refresh the page and check the tap list.");
+    }
+
     async function poll() {
         if (document.hidden || busy) return;
+        if (setupRunning()) { hide(); return; }
         try {
             const r = await fetch('/api/adoption/pending', { cache: 'no-store' });
             if (!r.ok) return;
@@ -10212,7 +10236,7 @@ window.newTapCard = (function () {
     setTimeout(poll, 3000);
     setInterval(poll, 5000);   // a new tap announces itself, so it shows within seconds
     document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
-    return { show, hide, poll };
+    return { show, hide, poll, dismiss, adopt, idOf };
 })();
 
 function showCommandSpinner(action) {
@@ -13746,10 +13770,11 @@ function _suFrame(o) {
   const seq = _suSequence();
   const idx = Math.max(0, seq.indexOf(_su.step));
   // 'homescreen' mode is the last step of a wizard begun on the IP origin
-  const pct = _su.mode === 'homescreen' ? 100 : Math.round((idx / Math.max(1, seq.length - 1)) * 100);
+  const pct = (_su.mode === 'homescreen' || _su.step === 'nexttap') ? 100
+            : Math.round((idx / Math.max(1, seq.length - 1)) * 100);
   // No going back once writes have been sent (the badge step's own write
   // stands alone - going back past it undoes nothing on the device)
-  const noBack = !_su.hist.length || ['apply', 'done', 'homescreen'].includes(_su.step);
+  const noBack = !_su.hist.length || ['apply', 'done', 'homescreen', 'nexttap'].includes(_su.step);
   const wrap = document.getElementById('suWrap');
   // Head and foot are fixed; only .su-body scrolls (see the .su-* CSS)
   wrap.innerHTML =
@@ -14143,9 +14168,9 @@ async function _suDone() {
   if (_su.step !== 'done') return;   // closed meanwhile
   const w = _suFrame({ title: _su.mode === 'line' ? 'Line saved' : 'You’re all set',
     body: '<div class="su-cards">' + cards + '</div>',
-    foot: '<button type="button" class="su-btn primary" id="suDash">' + (more ? 'Next' : 'Go to dashboard') + '</button>' });
+    foot: '<button type="button" class="su-btn primary" id="suDash">' + (more ? 'Next' : 'Done') + '</button>' });
   const btn = w.querySelector('#suDash');
-  if (!more) { btn.onclick = function(){ _suClose(); }; return; }
+  if (!more) { btn.onclick = function(){ btn.disabled = true; _suFinish(); }; return; }
   // Home-screen step: when .local answers, continue on it, so the shortcut
   // the user saves survives an IP change - no separate "open tapstr.local"
   // hop. The step is all that's left; the wizard reopens straight onto it.
@@ -14455,7 +14480,7 @@ function _suHomescreen() {
     body: '<ol class="su-howto">' + steps.map(function(s, i){ return '<li><span class="n">' + (i + 1) + '</span><span>' + s + '</span></li>'; }).join('') + '</ol>'
         + (note ? '<p class="su-note">' + note + '</p>' : ''),
     foot: '<button type="button" class="su-btn primary" id="suDash">Done</button>' });
-  wrap.querySelector('#suDash').onclick = function(){ _suClose(); };
+  wrap.querySelector('#suDash').onclick = function(){ this.disabled = true; _suFinish(); };
 }
 
 // Leave the wizard (finished or "do this later") and refresh the dashboard
@@ -14477,6 +14502,79 @@ function _suClose() {
   _suEl().classList.remove('active');
   try { history.replaceState(null, '', '/'); } catch (_) {}
   try { renderAllDevices(); } catch (_) {}
+}
+
+// The end of a finished setup ("Go to dashboard" / the home-screen step's
+// "Done"). A tap waiting to be added is offered here as the next step, rather
+// than as a banner or card mid-wizard (both are held back while it runs:
+// bannersQuiet() on the device, newTapCard here). The step adds it in place:
+// type its 2-digit code (sent on the second digit), or in the Tapstr app scan
+// its QR. A successful add opens that tap's own setup, which ends here again,
+// so setting up several taps runs as one line. "Not now" (or the X) leaves it
+// for the dashboard's "Adopt new tap".
+async function _suFinish() {
+  let pending = null;
+  try {
+    const r = await fetch('/api/adoption/pending', { cache: 'no-store' });
+    if (r.ok) pending = await r.json();
+  } catch (_) {}
+  if (!_suEl().classList.contains('active')) return;   // closed meanwhile
+  const nt = window.newTapCard;
+  const id = nt && pending && pending.found ? nt.idOf(pending.ssid) : '';
+  if (!/^[0-9A-F]{4}$/.test(id)) { _suClose(); return; }
+
+  _su.step = 'nexttap';
+  const inApp = !!(window.TapstrApp && typeof window.TapstrApp.postMessage === 'function');
+  const w = _suFrame({ title: 'Add another tap?',
+    sub: 'Another Tapstr is nearby and waiting for adoption.',
+    body: '<div class="su-field">'
+        +   '<div class="su-field-cap">Code on its screen</div>'
+        +   '<div class="su-input su-code"><input id="suNtCode" inputmode="numeric" pattern="[0-9]*" maxlength="2"'
+        +     ' placeholder="00" autocomplete="one-time-code" aria-label="Code on its screen"></div>'
+        +   '<div class="su-field-hint" id="suNtMsg"></div>'
+        + '</div>',
+    foot: (inApp ? '<button type="button" class="su-btn primary" id="suNtScan">Scan the QR code</button>' : '')
+        + '<button type="button" class="su-btn link" id="suNotNow">Not now</button>' });
+
+  const codeEl = w.querySelector('#suNtCode');
+  const box = codeEl.parentNode;
+  const msg = w.querySelector('#suNtMsg');
+  const say = function(text, err){ msg.textContent = text || ''; msg.classList.toggle('err', !!err); };
+  let busy = false;
+  const notNow = function(){ if (busy) return; nt.dismiss(id); _suClose(); };
+  w.querySelector('#suNotNow').onclick = notNow;
+  w.querySelector('#suClose').onclick = notNow;
+  if (inApp) w.querySelector('#suNtScan').onclick = function(){ window.TapstrApp.postMessage('add'); };
+
+  async function send() {
+    const code = codeEl.value;
+    if (busy || !/^[1-9][0-9]$/.test(code)) {
+      if (!busy && code.length === 2) say('Enter the 2-digit code shown on the new tap.', true);
+      return;
+    }
+    busy = true;
+    codeEl.disabled = true; codeEl.blur();
+    box.style.display = 'none';              // used: only the progress shows
+    w.querySelectorAll('.su-foot .su-btn').forEach(function(b){ b.disabled = true; });
+    try {
+      await nt.adopt(id, code, function(t){ say(t); });
+    } catch (e) {
+      if (_su.step !== 'nexttap') return;    // left meanwhile
+      say(e.message, true);
+      box.style.display = '';                // back for another go
+      codeEl.disabled = false; codeEl.value = ''; codeEl.focus();
+      w.querySelectorAll('.su-foot .su-btn').forEach(function(b){ b.disabled = false; });
+    } finally {
+      busy = false;
+    }
+  }
+  codeEl.addEventListener('input', function(){
+    const digits = codeEl.value.replace(/\D/g, '').slice(0, 2);
+    if (codeEl.value !== digits) codeEl.value = digits;
+    if (digits.length === 2) send(); else say('');
+  });
+  codeEl.addEventListener('keydown', function(e){ if (e.key === 'Enter') send(); });
+  if (!inApp) setTimeout(function(){ codeEl.focus(); }, 50);
 }
 
 // The slave's own QR carries its MAC; map it to this dashboard's device id.
@@ -14527,7 +14625,7 @@ async function runSetupWizard(opts) {
     const m = (currentDevices || []).find(function(d){ return d.id === 0; });
     _su.name = (m && m.name) || '';
     if (_suHomescreenEligible()) _suGo('homescreen', false);
-    else _suClose();   // already standalone, or opened on a desktop
+    else _suFinish();   // already standalone, or opened on a desktop
     return;
   }
 
