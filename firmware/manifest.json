@@ -1,7 +1,7 @@
 {
-  "version": "0.1.28",
-  "url": "https://tapstr-io.github.io/tapstr-releases/firmware/firmware-0.1.28.bin",
-  "sha256": "b57e926ab22eb599b2038457b4b7dfd3a8a36304fe88174e95d356ee2d9acdde",
-  "size": 4609344,
-  "released": "2026-11-17"
+  "version": "0.1.29",
+  "url": "https://tapstr-io.github.io/tapstr-releases/firmware/firmware-0.1.29.bin",
+  "sha256": "372ea46f992401f00347c87ffd4b530e9b021d297f6b8c11ebf4854c7536453d",
+  "size": 4609536,
+  "released": "2026-11-19"
 }
